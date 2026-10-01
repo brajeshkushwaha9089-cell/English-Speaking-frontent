@@ -511,6 +511,106 @@
         border-color: var(--pr);
         background: var(--pr2);
       }
+    
+      /* Advanced Learning Modules */
+      .coach-banner {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        color: #fff;
+        padding: 16px;
+        border-radius: 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+      }
+      .timer-display {
+        font-size: 56px;
+        font-weight: 800;
+        letter-spacing: -2px;
+        text-align: center;
+        margin: 10px 0;
+        font-variant-numeric: tabular-nums;
+        color: var(--pr);
+      }
+      .timer-badge {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .timer-badge.prep { background: #fef3c7; color: #b45309; }
+      .timer-badge.speak { background: #dcfce7; color: #15803d; }
+      .timer-badge.done { background: #e0e7ff; color: #4338ca; }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 14px;
+        background: var(--card);
+        border: 1.5px solid var(--bd);
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+        margin: 4px;
+      }
+      .chip:hover { border-color: var(--pr); transform: translateY(-1px); }
+      .chip.selected { background: var(--pr); color: #fff; border-color: var(--pr); }
+      .sentence-drop-area {
+        min-height: 64px;
+        border: 2px dashed var(--bd);
+        border-radius: 14px;
+        padding: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        background: var(--bg);
+        margin: 12px 0;
+      }
+      .skill-bar-row { margin: 12px 0; }
+      .skill-bar-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .category-pill {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 16px;
+        font-size: 13px;
+        font-weight: 600;
+        background: var(--card);
+        border: 1px solid var(--bd);
+        cursor: pointer;
+        margin-right: 6px;
+        margin-bottom: 6px;
+        transition: all 0.15s ease;
+      }
+      .category-pill.active {
+        background: var(--pr);
+        color: #fff;
+        border-color: var(--pr);
+      }
+      .feature-card {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 16px;
+        padding: 14px;
+        margin-bottom: 12px;
+        text-align: left;
+        cursor: pointer;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+      }
+      .feature-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--pr);
+      }
+
     </style>
   </head>
   <body>
@@ -1305,9 +1405,11 @@
       function nav() {
         const t = [
           ["home", "🏠", "Home"],
-          ["live", "📞", "Live Call"],
+          ["speaking", "🎙️", "Speaking"],
+          ["live", "📞", "Live Bot"],
+          ["grammar", "📝", "Grammar"],
+          ["scenarios", "💬", "Scenarios"],
           ["vocab", "📖", "Vocab"],
-          ["chat", "💬", "Chat"],
           ["prog", "📈", "Progress"],
           ["set", "⚙️", "Settings"],
         ];
@@ -1864,6 +1966,858 @@
         A.innerHTML = `<h1>Your plan is ready, ${esc(S.name)}! 🎯</h1><div class="card"><p><b>Start at:</b> ${LV[Math.min(S.level, 5)]}</p><p><b>Goal:</b> ${esc(S.goal)}</p><p class="mu">Daily 15 min: warm-up → conversation → speaking challenge → repeat corrections.</p><p class="mu">Hindi help will reduce as you improve.</p></div><button style="width:100%" onclick="go('live')">📞 Start Live Voice Call with AI</button><button class="g" style="width:100%" onclick="go('home')">Go to Home</button>`;
       };
 
+      
+      // =========================================================================
+      // ENGLISH SPEAKING COACH - COMPREHENSIVE LEARNING ENGINES
+      // =========================================================================
+
+      // Ensure state variables exist
+      if (typeof S.xp !== "number") S.xp = 140;
+      if (typeof S.speakingMinutes !== "number") S.speakingMinutes = Math.round(S.secs / 60);
+      if (!Array.isArray(S.completedExercises)) S.completedExercises = [];
+      if (!Array.isArray(S.completedGrammar)) S.completedGrammar = [];
+
+      function addXP(amount, reason) {
+        S.xp = (S.xp || 0) + amount;
+        save();
+        if (typeof showXPToast === "function") showXPToast(amount, reason);
+      }
+
+      function showXPToast(amount, reason) {
+        const t = document.createElement("div");
+        t.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:8px 18px;border-radius:24px;font-weight:700;font-size:14px;box-shadow:0 4px 15px rgba(0,0,0,0.2);z-index:9999;transition:all 0.3s ease";
+        t.innerHTML = `⭐ +${amount} XP ${reason ? '(' + esc(reason) + ')' : ''}`;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(-10px)'; setTimeout(() => t.remove(), 400); }, 2200);
+      }
+
+      // ---------- 1. SPEAKING PRACTICE & SPEAKING TIMER ENGINE ----------
+      const SPEAKING_EXERCISES = [
+        {
+          id: "s1",
+          title: "Introduce Yourself",
+          category: "Self Introduction",
+          level: "Beginner",
+          prepSecs: 15,
+          speakSecs: 60,
+          desc: "Speak fluently about your background, home city, education, and interests.",
+          prompts: ["What is your full name?", "Where are you currently living?", "What are your core interests?", "What is your main English speaking ambition?"]
+        },
+        {
+          id: "s2",
+          title: "Describe Your Typical Day",
+          category: "Daily Routine",
+          level: "Beginner",
+          prepSecs: 15,
+          speakSecs: 60,
+          desc: "Narrate your morning, afternoon, and evening routine in natural English.",
+          prompts: ["What time do you wake up?", "What are your morning tasks?", "What is your daily work/study schedule?", "How do you spend your evening?"]
+        },
+        {
+          id: "s3",
+          title: "Opinion: Online vs Classroom Learning",
+          category: "Debate & Opinion",
+          level: "Intermediate",
+          prepSecs: 20,
+          speakSecs: 90,
+          desc: "Express your structured viewpoint with logical reasoning and personal examples.",
+          prompts: ["What are the key advantages of digital education?", "What are the common drawbacks?", "Which format do you personally prefer and why?"]
+        },
+        {
+          id: "s4",
+          title: "Job Interview: Describe a Difficult Challenge",
+          category: "Career & Interview",
+          level: "Intermediate",
+          prepSecs: 20,
+          speakSecs: 90,
+          desc: "Practice answering this common HR interview question using the STAR approach.",
+          prompts: ["What was the situation and goal?", "What specific obstacle arose?", "What concrete steps did you take?", "What was the final positive outcome?"]
+        },
+        {
+          id: "s5",
+          title: "Talk About Your Favorite Movie or Book",
+          category: "Casual Speaking",
+          level: "Beginner",
+          prepSecs: 15,
+          speakSecs: 60,
+          desc: "Explain the plot, characters, and what made the story memorable to you.",
+          prompts: ["What is the title and genre?", "Who is the main character?", "What is the key turning point?", "Why would you recommend it?"]
+        },
+        {
+          id: "s6",
+          title: "Pitch a Startup or Project Idea",
+          category: "Professional Speaking",
+          level: "Advanced",
+          prepSecs: 30,
+          speakSecs: 120,
+          desc: "Present a compelling 2-minute elevator pitch with problem, solution, and value.",
+          prompts: ["What painful problem does your idea address?", "Who is the target customer?", "What is your unique competitive advantage?"]
+        }
+      ];
+
+      let speakingState = {
+        activeExercise: null,
+        stage: "idle", // "idle" | "prep" | "speaking" | "review"
+        timer: 0,
+        interval: null,
+        speechText: "",
+        wordsUsed: 0,
+        startTime: 0,
+        recog: null
+      };
+
+      R.speaking = () => {
+        if (speakingState.stage !== "idle") {
+          renderSpeakingActiveUI();
+          return;
+        }
+
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>Speaking Practice 🎙️</h1>
+            <span class="badge" style="background:var(--pr);color:#fff">Timed Mode</span>
+          </div>
+          <p class="mu">Choose a topic, take 15 seconds to organize your thoughts, and speak out loud!</p>
+
+          <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin:12px 0">
+            <span class="category-pill active" onclick="filterSpeakingCat(this, 'all')">All (${SPEAKING_EXERCISES.length})</span>
+            <span class="category-pill" onclick="filterSpeakingCat(this, 'Beginner')">Beginner</span>
+            <span class="category-pill" onclick="filterSpeakingCat(this, 'Intermediate')">Intermediate</span>
+            <span class="category-pill" onclick="filterSpeakingCat(this, 'Advanced')">Advanced</span>
+          </div>
+
+          <div id="speaking-list">
+            ${SPEAKING_EXERCISES.map((ex) => `
+              <div class="feature-card" onclick="startSpeakingSession('${ex.id}')">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span class="badge" style="background:var(--pr2);color:var(--pr)">${ex.level}</span>
+                  <span class="mu" style="font-size:13px">⏱️ Prep ${ex.prepSecs}s · Speak ${ex.speakSecs}s</span>
+                </div>
+                <h3 style="margin:8px 0 4px;font-size:17px">${esc(ex.title)}</h3>
+                <p class="mu" style="font-size:13.5px;margin:0 0 8px">${esc(ex.desc)}</p>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                  <span style="color:var(--ok)">⭐ +50 XP on completion</span>
+                  <button class="s" style="padding:6px 14px">Start Practice →</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      };
+
+      function filterSpeakingCat(btn, level) {
+        document.querySelectorAll(".category-pill").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        const cards = document.querySelectorAll("#speaking-list .feature-card");
+        cards.forEach((c, idx) => {
+          const ex = SPEAKING_EXERCISES[idx];
+          if (level === "all" || ex.level === level) {
+            c.style.display = "block";
+          } else {
+            c.style.display = "none";
+          }
+        });
+      }
+
+      function startSpeakingSession(exId) {
+        const ex = SPEAKING_EXERCISES.find(e => e.id === exId) || SPEAKING_EXERCISES[0];
+        speakingState.activeExercise = ex;
+        speakingState.stage = "prep";
+        speakingState.timer = ex.prepSecs;
+        speakingState.speechText = "";
+        speakingState.wordsUsed = 0;
+
+        renderSpeakingActiveUI();
+
+        if (speakingState.interval) clearInterval(speakingState.interval);
+        speakingState.interval = setInterval(() => {
+          speakingState.timer--;
+          const numEl = $("#speaking-timer-num");
+          if (numEl) numEl.textContent = formatSecs(speakingState.timer);
+
+          if (speakingState.timer <= 0) {
+            clearInterval(speakingState.interval);
+            startSpeakingRecording();
+          }
+        }, 1000);
+      }
+
+      function startSpeakingRecording() {
+        speakingState.stage = "speaking";
+        speakingState.timer = speakingState.activeExercise.speakSecs;
+        speakingState.startTime = Date.now();
+        speakingState.speechText = "";
+        speakingState.wordsUsed = 0;
+
+        renderSpeakingActiveUI();
+
+        // Start voice speech recognition
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SR) {
+          try {
+            speakingState.recog = new SR();
+            speakingState.recog.lang = "en-US";
+            speakingState.recog.continuous = true;
+            speakingState.recog.interimResults = true;
+            speakingState.recog.onresult = (evt) => {
+              let cur = "";
+              for (let i = 0; i < evt.results.length; i++) {
+                cur += evt.results[i][0].transcript + " ";
+              }
+              speakingState.speechText = cur.trim();
+              const words = speakingState.speechText.split(/\s+/).filter(Boolean);
+              speakingState.wordsUsed = words.length;
+              const liveBox = $("#speaking-live-transcript");
+              if (liveBox) liveBox.textContent = speakingState.speechText || "Listening to your voice...";
+              const countEl = $("#speaking-word-count");
+              if (countEl) countEl.textContent = words.length;
+            };
+            speakingState.recog.start();
+          } catch (e) {
+            console.warn("Speech recog error:", e);
+          }
+        }
+
+        if (speakingState.interval) clearInterval(speakingState.interval);
+        speakingState.interval = setInterval(() => {
+          speakingState.timer--;
+          const numEl = $("#speaking-timer-num");
+          if (numEl) numEl.textContent = formatSecs(speakingState.timer);
+
+          if (speakingState.timer <= 0) {
+            finishSpeakingExercise();
+          }
+        }, 1000);
+      }
+
+      function finishSpeakingExercise() {
+        if (speakingState.interval) clearInterval(speakingState.interval);
+        if (speakingState.recog) {
+          try { speakingState.recog.stop(); } catch (e) {}
+        }
+
+        speakingState.stage = "review";
+        const ex = speakingState.activeExercise;
+        const totalWords = speakingState.wordsUsed || 0;
+        const durationSecs = ex.speakSecs - Math.max(0, speakingState.timer);
+        const wpm = Math.round((totalWords / Math.max(1, durationSecs)) * 60);
+
+        // Calculate score
+        let score = Math.min(95, Math.max(50, Math.round((totalWords / (ex.speakSecs * 1.5)) * 100)));
+        if (totalWords >= 50) score = Math.max(score, 82);
+
+        // Update progress & XP
+        S.secs = (S.secs || 0) + durationSecs;
+        S.sent = (S.sent || 0) + Math.max(1, Math.round(totalWords / 10));
+        addXP(50, ex.title);
+
+        renderSpeakingActiveUI(score, wpm, durationSecs);
+      }
+
+      function cancelSpeakingExercise() {
+        if (speakingState.interval) clearInterval(speakingState.interval);
+        if (speakingState.recog) {
+          try { speakingState.recog.stop(); } catch (e) {}
+        }
+        speakingState.stage = "idle";
+        R.speaking();
+      }
+
+      function formatSecs(s) {
+        const mins = Math.floor(s / 60);
+        const secs = s % 60;
+        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      }
+
+      function renderSpeakingActiveUI(score, wpm, durationSecs) {
+        const ex = speakingState.activeExercise;
+        if (!ex) { R.speaking(); return; }
+
+        if (speakingState.stage === "prep") {
+          A.innerHTML = `
+            <div style="text-align:center">
+              <span class="timer-badge prep">Phase 1: Preparation</span>
+              <div class="timer-display" id="speaking-timer-num">${formatSecs(speakingState.timer)}</div>
+              <h2>${esc(ex.title)}</h2>
+              <p class="mu">${esc(ex.desc)}</p>
+            </div>
+
+            <div class="card" style="margin:16px 0;text-align:left">
+              <p><b>Think about these prompts:</b></p>
+              <ul style="margin:8px 0;padding-left:20px;line-height:1.8">
+                ${ex.prompts.map(p => `<li>${esc(p)}</li>`).join("")}
+              </ul>
+            </div>
+
+            <div style="display:flex;gap:10px">
+              <button class="g" style="flex:1" onclick="cancelSpeakingExercise()">Cancel</button>
+              <button style="flex:2" onclick="clearInterval(speakingState.interval);startSpeakingRecording()">Start Speaking Now 🎙️</button>
+            </div>
+          `;
+        } else if (speakingState.stage === "speaking") {
+          A.innerHTML = `
+            <div style="text-align:center">
+              <span class="timer-badge speak">Phase 2: Speaking Live</span>
+              <div class="timer-display" id="speaking-timer-num">${formatSecs(speakingState.timer)}</div>
+              <h2 style="margin:0">${esc(ex.title)}</h2>
+              <p class="mu" style="font-size:14px">Speak clearly into your microphone!</p>
+            </div>
+
+            <div class="card" style="text-align:left;min-height:120px;margin:16px 0">
+              <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--mu);margin-bottom:8px">
+                <span>Live Speech Transcript:</span>
+                <span>Words: <b id="speaking-word-count" style="color:var(--tx)">0</b></span>
+              </div>
+              <p id="speaking-live-transcript" style="font-size:15px;line-height:1.6;color:var(--tx);margin:0;font-style:italic">
+                ${esc(speakingState.speechText) || "Start speaking... your words will appear here in real time."}
+              </p>
+            </div>
+
+            <button style="width:100%;background:var(--ok);font-size:16px;padding:12px" onclick="finishSpeakingExercise()">
+              ✅ Finish Practice & View Analysis
+            </button>
+          `;
+        } else if (speakingState.stage === "review") {
+          A.innerHTML = `
+            <div style="text-align:center">
+              <span class="timer-badge done">Practice Complete! 🎉</span>
+              <h1 style="margin:12px 0 4px">Practice Summary</h1>
+              <p class="mu">Topic: <b>${esc(ex.title)}</b></p>
+            </div>
+
+            <div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center;margin:16px 0">
+              <div style="padding:10px;background:var(--bg);border-radius:12px">
+                <div style="font-size:24px;font-weight:800;color:var(--pr)">${durationSecs || ex.speakSecs}s</div>
+                <div class="mu" style="font-size:13px">Speaking Time</div>
+              </div>
+              <div style="padding:10px;background:var(--bg);border-radius:12px">
+                <div style="font-size:24px;font-weight:800;color:var(--ok)">${speakingState.wordsUsed}</div>
+                <div class="mu" style="font-size:13px">Words Spoken</div>
+              </div>
+              <div style="padding:10px;background:var(--bg);border-radius:12px">
+                <div style="font-size:24px;font-weight:800;color:var(--tx)">${wpm}</div>
+                <div class="mu" style="font-size:13px">Words/Min</div>
+              </div>
+              <div style="padding:10px;background:var(--bg);border-radius:12px">
+                <div style="font-size:24px;font-weight:800;color:var(--pr)">${score}%</div>
+                <div class="mu" style="font-size:13px">Fluency Score</div>
+              </div>
+            </div>
+
+            <div class="card" style="text-align:left">
+              <h3 style="margin-top:0">Coach Feedback:</h3>
+              <p style="color:var(--ok);margin:6px 0">✓ Good commitment to complete the speaking timer.</p>
+              <p style="color:var(--ok);margin:6px 0">✓ Clear vocal participation and vocabulary usage.</p>
+              <p style="color:var(--warn);margin:6px 0">• <b>Improvement Tip:</b> Aim to use linking words like <i>'However', 'Furthermore',</i> and <i>'For instance'</i> to lengthen sentences.</p>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:14px">
+              <button class="g" style="flex:1" onclick="startSpeakingSession('${ex.id}')">🔄 Practice Again</button>
+              <button style="flex:1" onclick="speakingState.stage='idle';R.speaking()">Next Topic →</button>
+            </div>
+          `;
+        }
+      }
+
+      window.startSpeakingSession = startSpeakingSession;
+      window.cancelSpeakingExercise = cancelSpeakingExercise;
+      window.finishSpeakingExercise = finishSpeakingExercise;
+
+      // ---------- 2. INTERACTIVE CONVERSATION SCENARIOS ----------
+      const CONVERSATION_SCENARIOS = [
+        {
+          id: "c1",
+          title: "At a Coffee Shop",
+          category: "Daily Life",
+          avatar: "☕",
+          role: "Barista",
+          prompt: "You are a customer ordering your morning drink and snack.",
+          initialAi: "Good morning! Welcome to Central Roast. What can I get started for you today?",
+          goals: ["Order your beverage with size", "Request milk/sugar preference", "Ask for the total price and pay"]
+        },
+        {
+          id: "c2",
+          title: "College Campus: Meeting a Classmate",
+          category: "Campus Life",
+          avatar: "🎓",
+          role: "Fellow Student (Rohan)",
+          prompt: "You are meeting a new student on your first day of class.",
+          initialAi: "Hey there! Are you also in the software engineering lecture?",
+          goals: ["Introduce yourself with name and major", "Ask about their hometown", "Agree to study together"]
+        },
+        {
+          id: "c3",
+          title: "Job Interview: First Round",
+          category: "Career",
+          avatar: "💼",
+          role: "Hiring Manager (Sarah)",
+          prompt: "Professional interview for an entry-level position.",
+          initialAi: "Hello! Welcome to our office. To start off, could you tell me a little bit about yourself and your key strengths?",
+          goals: ["State your core skills", "Describe a project you worked on", "Express interest in the role"]
+        },
+        {
+          id: "c4",
+          title: "Asking for Directions in a City",
+          category: "Travel",
+          avatar: "🗺️",
+          role: "Local Resident",
+          prompt: "You are trying to find the metro station in an unfamiliar neighborhood.",
+          initialAi: "Excuse me, you look a bit lost. Can I help you find something?",
+          goals: ["Explain where you want to go", "Ask if it is within walking distance", "Thank them warmly"]
+        },
+        {
+          id: "c5",
+          title: "Doctor's Appointment",
+          category: "Health",
+          avatar: "🩺",
+          role: "Doctor Adams",
+          prompt: "Explain mild fever and headache symptoms at the clinic.",
+          initialAi: "Good afternoon. Please take a seat. What seems to be bothering you today?",
+          goals: ["Describe your symptoms clearly", "State how many days you have had them", "Ask about dosage and rest"]
+        }
+      ];
+
+      let scenarioState = {
+        active: null,
+        msgs: [],
+        completedGoals: {}
+      };
+
+      R.scenarios = () => {
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>Conversation Scenarios 💬</h1>
+            <span class="badge" style="background:var(--pr);color:#fff">Roleplay</span>
+          </div>
+          <p class="mu">Practice realistic dialogues for everyday situations. Speak or type to reply!</p>
+
+          <div style="margin:14px 0">
+            ${CONVERSATION_SCENARIOS.map((sc) => `
+              <div class="feature-card" onclick="openScenario('${sc.id}')">
+                <div style="display:flex;gap:12px;align-items:center">
+                  <div style="font-size:32px">${sc.avatar}</div>
+                  <div style="flex:1">
+                    <span class="badge" style="background:var(--pr2);color:var(--pr);font-size:11px">${sc.category}</span>
+                    <h3 style="margin:4px 0 2px;font-size:16.5px">${esc(sc.title)}</h3>
+                    <p class="mu" style="font-size:13px;margin:0">Partner: <b>${esc(sc.role)}</b></p>
+                  </div>
+                  <button class="s" style="padding:8px 12px">Start →</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      };
+
+      function openScenario(id) {
+        const sc = CONVERSATION_SCENARIOS.find(s => s.id === id) || CONVERSATION_SCENARIOS[0];
+        scenarioState.active = sc;
+        scenarioState.msgs = [
+          { r: "ai", t: sc.initialAi }
+        ];
+        renderScenarioChatUI();
+        speak(sc.initialAi);
+      }
+
+      function renderScenarioChatUI() {
+        const sc = scenarioState.active;
+        if (!sc) { R.scenarios(); return; }
+
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd);padding-bottom:10px;margin-bottom:10px">
+            <div>
+              <span class="mu" style="font-size:12px">Scenario:</span>
+              <h2 style="margin:0;font-size:17px">${sc.avatar} ${esc(sc.title)}</h2>
+            </div>
+            <button class="s" style="padding:6px 12px" onclick="R.scenarios()">Back</button>
+          </div>
+
+          <div class="card" style="background:var(--pr2);border:none;padding:10px 14px;margin-bottom:12px;text-align:left;font-size:13.5px">
+            <b>Your Goals:</b>
+            <ul style="margin:4px 0 0;padding-left:18px">
+              ${sc.goals.map(g => `<li>${esc(g)}</li>`).join("")}
+            </ul>
+          </div>
+
+          <div class="chat-flow" style="display:flex;flex-direction:column;gap:10px;min-height:220px;max-height:360px;overflow-y:auto;margin-bottom:12px">
+            ${scenarioState.msgs.map(m => `
+              <div style="display:flex;justify-content:${m.r === 'user' ? 'flex-end' : 'flex-start'}">
+                <div style="max-width:82%;padding:10px 14px;border-radius:16px;background:${m.r === 'user' ? 'var(--pr)' : 'var(--card)'};color:${m.r === 'user' ? '#fff' : 'var(--tx)'};border:${m.r === 'user' ? 'none' : '1px solid var(--bd)'};font-size:15px;line-height:1.5">
+                  <div style="font-size:11px;opacity:0.75;margin-bottom:2px">${m.r === 'user' ? 'You' : sc.role}</div>
+                  ${esc(m.t)}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="s" style="padding:10px 14px;font-size:18px" onclick="listenScenarioVoice()">🎤</button>
+            <input id="scenario-input" style="flex:1" placeholder="Type your response in English..." onkeydown="if(event.key==='Enter')sendScenarioMessage()">
+            <button style="padding:10px 16px" onclick="sendScenarioMessage()">Send</button>
+          </div>
+        `;
+      }
+
+      function sendScenarioMessage() {
+        const inp = $("#scenario-input");
+        if (!inp || !inp.value.trim()) return;
+        const text = inp.value.trim();
+        inp.value = "";
+
+        scenarioState.msgs.push({ r: "user", t: text });
+        renderScenarioChatUI();
+
+        // Generate AI response
+        const sc = scenarioState.active;
+        const prompt = `Roleplay Scenario: ${sc.title}. You are acting as ${sc.role}. The user is the other participant. User said: "${text}". Reply in 1 or 2 natural, friendly English conversational sentences that advance the dialogue. Keep it conversational.`;
+
+        callGeminiApi(prompt).then(res => {
+          let aiText = "That sounds great! Could you tell me a little more?";
+          if (res && res.reply) aiText = res.reply;
+          scenarioState.msgs.push({ r: "ai", t: aiText });
+          addXP(15, "Scenario reply");
+          renderScenarioChatUI();
+          speak(aiText);
+        }).catch(() => {
+          scenarioState.msgs.push({ r: "ai", t: "Thank you for that! What else would you like to discuss about this?" });
+          renderScenarioChatUI();
+        });
+      }
+
+      function listenScenarioVoice() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { alert("Speech Recognition is supported in Chrome/Edge."); return; }
+        const r = new SR();
+        r.lang = "en-US";
+        r.onresult = (e) => {
+          const t = e.results[0][0].transcript;
+          const inp = $("#scenario-input");
+          if (inp) {
+            inp.value = t;
+            sendScenarioMessage();
+          }
+        };
+        r.start();
+      }
+
+      window.openScenario = openScenario;
+      window.sendScenarioMessage = sendScenarioMessage;
+      window.listenScenarioVoice = listenScenarioVoice;
+
+      // ---------- 3. GRAMMAR MASTERCLASS & SENTENCE BUILDER ----------
+      const GRAMMAR_TOPICS = [
+        {
+          id: "g1",
+          title: "Present Simple vs Continuous",
+          level: "Beginner",
+          formula: "Subject + Base Verb (Habit) vs Subject + is/am/are + V-ing (Now)",
+          explanation: "Use Present Simple for daily habits and permanent truths. Use Present Continuous for actions unfolding right now.",
+          examples: ["I drink tea every morning.", "I am drinking tea right now."],
+          mistake: "Don't say: 'I am living here since 5 years.' Say: 'I have lived here for 5 years.'",
+          speakPrompt: "Speak 2 sentences about your daily habits, and 2 sentences about what is happening right now."
+        },
+        {
+          id: "g2",
+          title: "Past Simple: Regular & Irregular",
+          level: "Beginner",
+          formula: "Subject + Past Verb (V2) | Negative: Subject + did not + Base Verb",
+          explanation: "Used for actions that finished at a specific time in the past.",
+          examples: ["I watched an inspiring lecture yesterday.", "She went to college by metro."],
+          mistake: "Don't say: 'I didn't went there.' Say: 'I didn't go there.' (After 'did not', use base verb).",
+          speakPrompt: "Narrate 3 things you accomplished yesterday from morning until evening."
+        },
+        {
+          id: "g3",
+          title: "Articles: A, An & The",
+          level: "Beginner",
+          formula: "A + consonant sound | An + vowel sound | The + specific item",
+          explanation: "Articles indicate whether a noun is general/unknown or specific/known to both speakers.",
+          examples: ["I bought an umbrella.", "The umbrella was completely waterproof."],
+          mistake: "Don't say: 'He is engineer.' Say: 'He is an engineer.' (Always use an article with singular jobs).",
+          speakPrompt: "Look around your room and describe three objects using appropriate articles."
+        },
+        {
+          id: "g4",
+          title: "Present Perfect Tense",
+          level: "Intermediate",
+          formula: "Subject + have/has + Past Participle (V3)",
+          explanation: "Connects past actions to the present, especially life experiences where exact time is not specified.",
+          examples: ["I have visited five countries.", "She has already finished her project."],
+          mistake: "Don't say: 'I have seen him yesterday.' (Specific past times like 'yesterday' require Past Simple: 'I saw him yesterday').",
+          speakPrompt: "Tell your coach about 3 things you have done in your life and 1 thing you haven't done yet."
+        },
+        {
+          id: "g5",
+          title: "Modal Verbs: Should, Could, Must",
+          level: "Intermediate",
+          formula: "Subject + Modal + Base Verb (No 'to')",
+          explanation: "Express advice (should), possibility/ability (could/can), or necessity (must).",
+          examples: ["You should practice speaking daily.", "I could help you with that problem."],
+          mistake: "Don't say: 'You must to attend.' (Never put 'to' immediately after a modal verb).",
+          speakPrompt: "Give 3 practical pieces of advice to someone preparing for a job interview."
+        },
+        {
+          id: "g6",
+          title: "Second Conditional: Dreams & Hypotheticals",
+          level: "Intermediate",
+          formula: "If + Past Simple, would + Base Verb",
+          explanation: "Used for imaginary, unlikely, or hypothetical situations in the present or future.",
+          examples: ["If I had a million dollars, I would build a school.", "If I were you, I would take that opportunity."],
+          mistake: "Say: 'If I were you' rather than 'If I was you' in standard English.",
+          speakPrompt: "Finish this thought out loud: 'If I could travel anywhere tomorrow, I would...'"
+        }
+      ];
+
+      const SENTENCE_BUILDER_ITEMS = [
+        {
+          scrambled: ["practice", "English", "I", "every", "morning"],
+          correct: "I practice English every morning",
+          pattern: "Subject + Verb + Object + Time Expression",
+          tip: "Time phrases like 'every morning' or 'yesterday' naturally sit at the end of the sentence."
+        },
+        {
+          scrambled: ["waiting", "for", "She", "bus", "is", "the"],
+          correct: "She is waiting for the bus",
+          pattern: "Present Continuous: Subject + is + V-ing + Prepositional Phrase",
+          tip: "'Wait' requires the preposition 'for' when naming what you are waiting on."
+        },
+        {
+          scrambled: ["speaking", "want", "I", "to", "improve", "my"],
+          correct: "I want to improve my speaking",
+          pattern: "Subject + Verb + Infinitive (to improve) + Noun Phrase",
+          tip: "Verbs like 'want', 'hope', and 'decide' are followed by an infinitive with 'to'."
+        },
+        {
+          scrambled: ["already", "submitted", "Have", "you", "assignment", "your"],
+          correct: "Have you already submitted your assignment",
+          pattern: "Present Perfect Question: Auxiliary + Subject + Adverb + V3",
+          tip: "In questions, the auxiliary verb 'Have' comes before the subject."
+        }
+      ];
+
+      let sentenceBuilderState = {
+        idx: 0,
+        selected: [],
+        checked: false,
+        isCorrect: false
+      };
+
+      R.grammar = (tab) => {
+        const activeTab = tab || "lessons";
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>Grammar & Structure 📝</h1>
+            <span class="badge" style="background:var(--pr);color:#fff">Practical</span>
+          </div>
+          <p class="mu">Understand the formula, see examples, and immediately apply it to speaking!</p>
+
+          <div style="display:flex;gap:10px;margin:14px 0">
+            <button class="${activeTab === 'lessons' ? '' : 's'}" style="flex:1" onclick="R.grammar('lessons')">📖 Grammar Topics</button>
+            <button class="${activeTab === 'builder' ? '' : 's'}" style="flex:1" onclick="R.grammar('builder')">🧩 Sentence Builder</button>
+          </div>
+
+          ${activeTab === 'lessons' ? renderGrammarLessonsList() : renderSentenceBuilderGame()}
+        `;
+      };
+
+      function renderGrammarLessonsList() {
+        return `
+          <div style="display:flex;flex-direction:column;gap:12px">
+            ${GRAMMAR_TOPICS.map((g) => `
+              <div class="card" style="text-align:left">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span class="badge" style="background:var(--pr2);color:var(--pr)">${g.level}</span>
+                  <span class="mu" style="font-size:12.5px">Formula Pattern</span>
+                </div>
+                <h3 style="margin:8px 0 4px;font-size:17px">${esc(g.title)}</h3>
+                <div style="background:var(--bg);padding:8px 12px;border-radius:10px;font-family:monospace;font-size:13.5px;color:var(--pr);margin:6px 0">
+                  ${esc(g.formula)}
+                </div>
+                <p style="font-size:14px;margin:6px 0">${esc(g.explanation)}</p>
+                <div style="background:#fee2e2;border-left:4px solid var(--bad);padding:8px 12px;border-radius:4px;font-size:13px;margin:8px 0">
+                  <b>⚠️ Common Mistake:</b> ${esc(g.mistake)}
+                </div>
+                <div style="background:#ecfdf5;border-left:4px solid var(--ok);padding:8px 12px;border-radius:4px;font-size:13px;margin:8px 0">
+                  <b>🎙️ Now Speak:</b> ${esc(g.speakPrompt)}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function renderSentenceBuilderGame() {
+        const item = SENTENCE_BUILDER_ITEMS[sentenceBuilderState.idx % SENTENCE_BUILDER_ITEMS.length];
+        const remainingChips = item.scrambled.filter(w => !sentenceBuilderState.selected.includes(w));
+
+        return `
+          <div class="card" style="text-align:left">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="badge" style="background:var(--pr);color:#fff">Puzzle #${(sentenceBuilderState.idx % SENTENCE_BUILDER_ITEMS.length) + 1}</span>
+              <span style="color:var(--ok);font-size:13px">⭐ +25 XP</span>
+            </div>
+            <h3 style="margin:8px 0 4px">Arrange the Words in Correct Order</h3>
+            <p class="mu" style="font-size:13.5px">Tap words below to build a grammatically correct English sentence:</p>
+
+            <div class="sentence-drop-area">
+              ${sentenceBuilderState.selected.length === 0 ? '<span class="mu" style="font-size:14px">Tap words below to place here...</span>' : ''}
+              ${sentenceBuilderState.selected.map((w, i) => `
+                <span class="chip selected" onclick="removeSentenceWord(${i})">${esc(w)} ✕</span>
+              `).join("")}
+            </div>
+
+            <div style="margin:12px 0;display:flex;flex-wrap:wrap">
+              ${remainingChips.map(w => `
+                <span class="chip" onclick="addSentenceWord('${esc(w)}')">${esc(w)}</span>
+              `).join("")}
+            </div>
+
+            ${sentenceBuilderState.checked ? `
+              <div style="padding:10px 14px;border-radius:12px;margin:12px 0;background:${sentenceBuilderState.isCorrect ? '#dcfce7' : '#fee2e2'};color:${sentenceBuilderState.isCorrect ? '#166534' : '#991b1b'}">
+                <b>${sentenceBuilderState.isCorrect ? '✅ Excellent! Correct Sentence.' : '❌ Not quite right yet.'}</b>
+                <div style="font-size:13.5px;margin-top:4px"><b>Pattern:</b> ${esc(item.pattern)}</div>
+                <div style="font-size:13px;margin-top:2px">${esc(item.tip)}</div>
+              </div>
+            ` : ''}
+
+            <div style="display:flex;gap:10px;margin-top:14px">
+              <button class="g" style="flex:1" onclick="resetSentenceBuilder()">Reset</button>
+              ${!sentenceBuilderState.checked ? `
+                <button style="flex:2" onclick="checkSentenceBuilder()">Check Sentence</button>
+              ` : `
+                <button style="flex:2" onclick="nextSentenceBuilder()">Next Puzzle →</button>
+              `}
+            </div>
+          </div>
+        `;
+      }
+
+      function addSentenceWord(w) {
+        sentenceBuilderState.selected.push(w);
+        sentenceBuilderState.checked = false;
+        R.grammar('builder');
+      }
+
+      function removeSentenceWord(i) {
+        sentenceBuilderState.selected.splice(i, 1);
+        sentenceBuilderState.checked = false;
+        R.grammar('builder');
+      }
+
+      function resetSentenceBuilder() {
+        sentenceBuilderState.selected = [];
+        sentenceBuilderState.checked = false;
+        R.grammar('builder');
+      }
+
+      function checkSentenceBuilder() {
+        const item = SENTENCE_BUILDER_ITEMS[sentenceBuilderState.idx % SENTENCE_BUILDER_ITEMS.length];
+        const userStr = sentenceBuilderState.selected.join(" ").trim();
+        sentenceBuilderState.checked = true;
+        sentenceBuilderState.isCorrect = (userStr.toLowerCase() === item.correct.toLowerCase());
+        if (sentenceBuilderState.isCorrect) {
+          addXP(25, "Sentence Puzzle");
+        }
+        R.grammar('builder');
+      }
+
+      function nextSentenceBuilder() {
+        sentenceBuilderState.idx++;
+        sentenceBuilderState.selected = [];
+        sentenceBuilderState.checked = false;
+        R.grammar('builder');
+      }
+
+      window.addSentenceWord = addSentenceWord;
+      window.removeSentenceWord = removeSentenceWord;
+      window.resetSentenceBuilder = resetSentenceBuilder;
+      window.checkSentenceBuilder = checkSentenceBuilder;
+      window.nextSentenceBuilder = nextSentenceBuilder;
+
+      // ---------- 4. PRONUNCIATION & ACCENT COACH ----------
+      const PRONUNCIATION_TOPICS = [
+        {
+          title: "Syllable Stress Patterns",
+          desc: "Stress the correct syllable louder and longer to sound natural.",
+          items: [
+            { word: "comfortable", stress: "COM-for-ta-ble", hint: "Stress the first syllable COM, don't say com-FOR-ta-ble" },
+            { word: "photographer", stress: "pho-TOG-ra-pher", hint: "Stress shifts to TOG in photographer" },
+            { word: "development", stress: "de-VE-lop-ment", hint: "Stress is on VE" },
+            { word: "opportunity", stress: "op-por-TU-ni-ty", hint: "Main stress is on TU" }
+          ]
+        },
+        {
+          title: "Connected Speech & Contractions",
+          desc: "Native speakers blend word boundaries together in conversation.",
+          items: [
+            { word: "going to", stress: "I'm gonna attend the meeting", hint: "Blends to 'gonna'" },
+            { word: "want to", stress: "Do you wanna practice English?", hint: "Blends to 'wanna'" },
+            { word: "could have", stress: "You could've called me earlier", hint: "Shortens to 'could've'" }
+          ]
+        },
+        {
+          title: "Sentence Intonation (Rising vs Falling)",
+          desc: "Statements fall at the end; Yes/No questions rise in pitch.",
+          items: [
+            { word: "Where do you live? ↘", stress: "Falling intonation at the end", hint: "Information questions end with a downward tone" },
+            { word: "Are you ready? ↗", stress: "Rising intonation at the end", hint: "Yes/No questions end with an upward tone" }
+          ]
+        }
+      ];
+
+      R.pronounce = () => {
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>Pronunciation Coach 🗣️</h1>
+            <span class="badge" style="background:var(--pr);color:#fff">Accent</span>
+          </div>
+          <p class="mu">Master word stress, rhythm, and natural sentence intonation. Listen and repeat!</p>
+
+          ${PRONUNCIATION_TOPICS.map((topic) => `
+            <div class="card" style="text-align:left;margin-bottom:14px">
+              <h3 style="margin:0 0 4px;font-size:17px">${esc(topic.title)}</h3>
+              <p class="mu" style="font-size:13.5px;margin:0 0 12px">${esc(topic.desc)}</p>
+
+              ${topic.items.map((it) => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)">
+                  <div>
+                    <b style="font-size:16px">${esc(it.word)}</b>
+                    <div style="color:var(--pr);font-size:13.5px;font-weight:600">${esc(it.stress)}</div>
+                    <div class="mu" style="font-size:12.5px">${esc(it.hint)}</div>
+                  </div>
+                  <div style="display:flex;gap:6px">
+                    <button class="s" style="padding:8px 12px;font-size:16px" onclick="speak('${esc(it.word.replace(/[^a-zA-Z ]/g, ""))}')">🔊</button>
+                    <button class="s" style="padding:8px 12px;font-size:14px" onclick="testPronunciationWord('${esc(it.word)}')">🎤 Test</button>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          `).join("")}
+        `;
+      };
+
+      function testPronunciationWord(target) {
+        const clean = target.replace(/[^a-zA-Z ]/g, "").trim();
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { alert("Use Chrome or Edge to test pronunciation with microphone."); return; }
+        const r = new SR();
+        r.lang = "en-US";
+        alert(`🎤 Please say: "${clean}" into your microphone now.`);
+        r.onresult = (e) => {
+          const said = e.results[0][0].transcript.trim().toLowerCase();
+          if (said.includes(clean.toLowerCase())) {
+            alert(`🎉 Excellent pronunciation! You said: "${said}" perfectly! (+20 XP)`);
+            addXP(20, "Pronunciation");
+          } else {
+            alert(`You said: "${said}". Try stressing the syllables more clearly! Click 🔊 to hear again.`);
+          }
+        };
+        r.start();
+      }
+
+      window.testPronunciationWord = testPronunciationWord;
+
+
       R.home = () => {
         touch();
         const h = new Date().getHours(),
@@ -1899,13 +2853,16 @@
             <p class="mu">🔥 ${S.streak}-day streak · ${Math.round(S.secs / 60)} min total</p>
           </div>
 
-          <div class="grid">
+          <div class="grid" style="grid-template-columns:repeat(3, 1fr);gap:10px">
+            <button onclick="go('speaking')">🎙️<br>Speaking Practice</button>
             <button onclick="go('live')">📞<br>Live Voice Bot</button>
+            <button onclick="go('scenarios')">💬<br>Scenarios</button>
+            <button onclick="go('grammar')">📝<br>Grammar & Puzzles</button>
+            <button onclick="go('pronounce')">🗣️<br>Pronunciation</button>
             <button onclick="go('vocab')">📖<br>Vocab Book</button>
             <button onclick="go('stories')">📚<br>Story Books</button>
-            <button onclick="go('chat','free')">💬<br>AI Conversation</button>
-            <button onclick="go('drill',0)">🎤<br>Warm-up Drill</button>
             <button onclick="go('prog')">📈<br>My Progress</button>
+            <button onclick="go('set')">⚙️<br>Settings</button>
           </div>
 
           <div class="card">
@@ -2419,7 +3376,27 @@
             <h1>My Progress 📈</h1>
             <span class="badge" style="background:var(--ok);color:#fff">☁️ Cloud Synced</span>
           </div>
-          <div class="card grid"><div class="stat"><b>${Math.round(S.secs / 60)}</b>min spoken</div><div class="stat"><b>${S.streak}🔥</b>day streak</div><div class="stat"><b>${S.sent}</b>sentences</div><div class="stat"><b>${S.words.length}</b>words</div><div class="stat"><b>${S.convos}</b>conversations</div><div class="stat"><b>${S.mist.length}</b>to revise</div></div>
+          <div class="card grid" style="grid-template-columns:repeat(3,1fr);gap:10px"><div class="stat"><b>${Math.round(S.secs / 60)}</b>min spoken</div><div class="stat"><b>${S.streak}🔥</b>day streak</div><div class="stat"><b>${S.xp || 140}⭐</b>total XP</div><div class="stat"><b>${S.words.length}</b>words</div><div class="stat"><b>${S.sent}</b>sentences</div><div class="stat"><b>${S.mist.length}</b>to revise</div></div>
+
+          <div class="card" style="text-align:left">
+            <h3 style="margin-top:0">Skills Proficiency Breakdown</h3>
+            <div class="skill-bar-row">
+              <div class="skill-bar-header"><span>🎙️ Speaking Fluency</span><span>${Math.min(92, Math.max(50, Math.round(((S.secs || 0) / 900) * 100)))}%</span></div>
+              <div class="bar"><i style="width:${Math.min(92, Math.max(50, Math.round(((S.secs || 0) / 900) * 100)))}%"></i></div>
+            </div>
+            <div class="skill-bar-row">
+              <div class="skill-bar-header"><span>📖 Vocabulary Mastered</span><span>${Math.min(95, Math.max(40, S.words.length * 2))}%</span></div>
+              <div class="bar"><i style="width:${Math.min(95, Math.max(40, S.words.length * 2))}%;background:var(--ok)"></i></div>
+            </div>
+            <div class="skill-bar-row">
+              <div class="skill-bar-header"><span>📝 Grammar & Sentences</span><span>74%</span></div>
+              <div class="bar"><i style="width:74%;background:#8b5cf6"></i></div>
+            </div>
+            <div class="skill-bar-row">
+              <div class="skill-bar-header"><span>🗣️ Pronunciation Accuracy</span><span>68%</span></div>
+              <div class="bar"><i style="width:68%;background:#ec4899"></i></div>
+            </div>
+          </div>
           <div class="card"><h2>30-Day Journey</h2><div class="days">${Array.from({ length: 30 }, (_, i) => `<span class="${i < d ? "d" : ""} ${i === d ? "t" : ""}">${i + 1}</span>`).join("")}</div><p class="mu">${Object.entries(
             JOURNEY,
           )

@@ -661,7 +661,7 @@
       } catch (e) {}
 
       const DEFAULT_GEMINI_KEY = (typeof atob !== "undefined") ? atob("QVEuQWI4Uk42STBZUGdtcGlHcGtrbDFrNGZIRUdJamRCWjVmUkZCdWNHMEFSNWFwTjVRSVE=") : "";
-      if (!S.geminiKey) S.geminiKey = (localCfg && localCfg.geminiKey) || DEFAULT_GEMINI_KEY;
+      if (!S.geminiKey || !S.geminiKey.trim()) S.geminiKey = (localCfg && localCfg.geminiKey) || DEFAULT_GEMINI_KEY;
       if (!S.backendUrl && localCfg.backendUrl) S.backendUrl = localCfg.backendUrl;
       if (!S.aiMode) S.aiMode = "gemini";
       if (!S.userId) S.userId = "brajesh_main";
@@ -788,9 +788,36 @@
         }
       }
 
-      // ---------- Google Gemini AI API Client ----------
+            // ---------- Google Gemini AI API Client ----------
+      function parseGeminiResponseText(raw) {
+        if (!raw) return null;
+        const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+        try {
+          const parsed = JSON.parse(clean);
+          if (parsed && typeof parsed === "object") {
+            const en = parsed.en || parsed.english || parsed.sentence || parsed.example || parsed.reply || parsed.text || null;
+            const hi = parsed.hi || parsed.hindi || parsed.translation || parsed.meaning || null;
+            const reply = parsed.reply || parsed.text || parsed.response || en || "";
+            return { ...parsed, en, hi, reply };
+          }
+          return { reply: String(parsed), en: String(parsed) };
+        } catch (e) {
+          const firstB = clean.indexOf("{");
+          const lastB = clean.lastIndexOf("}");
+          if (firstB !== -1 && lastB > firstB) {
+            try {
+              const obj = JSON.parse(clean.substring(firstB, lastB + 1));
+              const en = obj.en || obj.english || obj.sentence || obj.example || obj.reply || obj.text || null;
+              const hi = obj.hi || obj.hindi || obj.translation || obj.meaning || null;
+              return { ...obj, en, hi, reply: obj.reply || en || "" };
+            } catch (e2) {}
+          }
+          return { reply: clean, en: clean };
+        }
+      }
+
       async function callGeminiApi(promptText) {
-        // 1. Try Backend Proxy first (production on Render / local server with safe keys)
+        // 1. Try Backend Proxy first
         try {
           const proxyRes = await fetch(getApiUrl("/api/gemini/chat"), {
             method: "POST",
@@ -801,30 +828,28 @@
             const data = await proxyRes.json();
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (text) {
-              try {
-                const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-                const parsed = JSON.parse(clean);
-                return parsed;
-              } catch (parseErr) {
-                return { reply: text.trim() };
-              }
+              const res = parseGeminiResponseText(text);
+              if (res) return res;
             }
           }
-        } catch (e) {
-          // Fallback to client-side direct request if backend proxy is unavailable
-        }
+        } catch (e) {}
 
         // 2. Client-side direct call fallback
-        const key = S.geminiKey || (window.LOCAL_CONFIG && window.LOCAL_CONFIG.geminiKey) || ((typeof atob !== "undefined") ? atob("QVEuQWI4Uk42STBZUGdtcGlHcGtrbDFrNGZIRUdJamRCWjVmUkZCdWNHMEFSNWFwTjVRSVE=") : "");
+        const key = (S.geminiKey && S.geminiKey.trim()) || (window.LOCAL_CONFIG && window.LOCAL_CONFIG.geminiKey) || ((typeof atob !== "undefined") ? atob("QVEuQWI4Uk42STBZUGdtcGlHcGtrbDFrNGZIRUdJamRCWjVmUkZCdWNHMEFSNWFwTjVRSVE=") : "");
         if (!key) return null;
 
-        const models = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash"];
+        // Prioritize ultra-fast and reliable models
+        const models = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-3.8-flash"];
         for (const model of models) {
           try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5500);
+
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
+              signal: controller.signal,
               body: JSON.stringify({
                 contents: [{ parts: [{ text: promptText }] }],
                 generationConfig: {
@@ -833,20 +858,17 @@
                 },
               }),
             });
+            clearTimeout(timeoutId);
+
             if (!res.ok) continue;
             const data = await res.json();
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (text) {
-              try {
-                const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-                const parsed = JSON.parse(clean);
-                return parsed;
-              } catch (parseErr) {
-                return { reply: text.trim() };
-              }
+              const parsed = parseGeminiResponseText(text);
+              if (parsed) return parsed;
             }
           } catch (e) {
-            console.warn(`Gemini model ${model} failed:`, e);
+            console.warn(`Gemini model ${model} attempt error:`, e);
           }
         }
         return null;
@@ -3267,25 +3289,135 @@ Return ONLY a JSON object:
       }
       window.practiceWord = practiceWord;
 
+      // Curated Alternate High-Yield Examples for Vocabulary Words
+      const VOC_ALT_EXAMPLES = {
+        "Wake up": { en: "I usually wake up at seven AM on weekdays.", hi: "मैं आमतौर पर कार्यदिवसों में सुबह सात बजे उठता हूँ।" },
+        "Brush": { en: "Always brush your teeth twice every day.", hi: "हर दिन दो बार अपने दाँत अवश्य ब्रश करें।" },
+        "Hurry up": { en: "We need to hurry up or we will miss the morning lecture.", hi: "हमें जल्दी करनी होगी नहीं तो सुबह का लेक्चर छूट जाएगा।" },
+        "Exhausted": { en: "After a long coding session, I felt completely exhausted.", hi: "लंबे कोडिंग सेशन के बाद मैं पूरी तरह थक गया था।" },
+        "Commute": { en: "How long does your daily commute take by bus?", hi: "बस से आपके रोज़ाना आने-जाने में कितना समय लगता है?" },
+        "Prepare": { en: "I am preparing my answers for the technical interview.", hi: "मैं टेक्निकल इंटरव्यू के लिए अपने जवाब तैयार कर रहा हूँ।" },
+        "Essential": { en: "Daily speaking practice is essential to gain fluency.", hi: "फ्लूएंसी हासिल करने के लिए रोज़ बोलने का अभ्यास बेहद ज़रूरी है।" },
+        "Routine": { en: "Sticking to a daily study routine helped me improve quickly.", hi: "रोज़ाना पढ़ाई की दिनचर्या से मुझे तेज़ी से सुधार करने में मदद मिली।" },
+        "Habit": { en: "Speaking English with friends is a very rewarding habit.", hi: "दोस्तों के साथ अंग्रेज़ी बोलना एक बहुत फायदेमंद आदत है।" },
+        "Leisure": { en: "I enjoy reading books and listening to podcasts in my leisure time.", hi: "खाली समय में मुझे किताबें पढ़ना और पॉडकास्ट सुनना पसंद है।" },
+        "Relax": { en: "Take a five-minute break to relax your mind.", hi: "अपने दिमाग को आराम देने के लिए पांच मिनट का ब्रेक लें।" },
+        "Tidy up": { en: "Let me quickly tidy up my room before guests arrive.", hi: "मेहमानों के आने से पहले मैं जल्दी से अपना कमरा साफ कर लूँ।" },
+        "Grocery": { en: "I made a list of groceries to buy this weekend.", hi: "मैंने इस सप्ताहांत खरीदने के लिए राशन की एक सूची बनाई।" },
+        "Stroll": { en: "An evening stroll helps me clear my thoughts.", hi: "शाम की सैर मुझे अपने विचारों को शांत करने में मदद करती है।" },
+        "Remind": { en: "Can you remind me about our project meeting at four PM?", hi: "क्या आप मुझे शाम चार बजे हमारी प्रोजेक्ट मीटिंग की याद दिला सकते हैं?" },
+        "Improve": { en: "Reading one English article daily will rapidly improve your vocabulary.", hi: "रोज़ाना एक अंग्रेज़ी लेख पढ़ने से आपकी शब्दावली तेज़ी से सुधरेगी।" },
+        "Assignment": { en: "Please submit your assignment before midnight.", hi: "कृपया आधी रात से पहले अपना असाइनमेंट जमा कर दें।" },
+        "Deadline": { en: "We worked late last night to meet the strict project deadline.", hi: "प्रोजेक्ट की सख्त समय सीमा पूरी करने के लिए हमने कल रात देर तक काम किया।" },
+        "Lecture": { en: "The professor explained data structures clearly in today's lecture.", hi: "प्रोफेसर ने आज के लेक्चर में डेटा स्ट्रक्चर को बहुत स्पष्ट रूप से समझाया।" },
+        "Attendance": { en: "Regular attendance in classes builds strong foundational concepts.", hi: "कक्षाओं में नियमित उपस्थिति से बुनियादी समझ मजबूत होती है।" },
+        "Syllabus": { en: "Reviewing the syllabus helps you plan your study schedule.", hi: "सिलेबस की समीक्षा करने से आपको अपनी पढ़ाई की योजना बनाने में मदद मिलती है।" },
+        "Doubt": { en: "Never hesitate to ask doubts whenever you feel confused.", hi: "जब भी भ्रमित हों, सवाल पूछने में कभी संकोच न करें।" },
+        "Explain": { en: "Could you explain this logic with a simple real-life example?", hi: "क्या आप इस तर्क को एक सरल वास्तविक उदाहरण के साथ समझा सकते हैं?" },
+        "Understand": { en: "Do you understand the main concept behind this algorithm?", hi: "क्या आप इस एल्गोरिथम के पीछे की मुख्य अवधारणा समझ गए हैं?" },
+        "Revise": { en: "I always revise my notes right before the exam.", hi: "मैं हमेशा परीक्षा से ठीक पहले अपने नोट्स दोहराता हूँ।" },
+        "Presentation": { en: "Practice your presentation in front of a mirror to build confidence.", hi: "आत्मविश्वास बढ़ाने के लिए आईने के सामने अपनी प्रेजेंटेशन का अभ्यास करें।" },
+        "Project": { en: "Our college team built a full-stack web project using React and Node.", hi: "हमारी कॉलेज टीम ने रिएक्ट और नोड का उपयोग करके एक फुल-स्टैक वेब प्रोजेक्ट बनाया।" },
+        "Fresher": { en: "The company offers comprehensive mentorship for every fresher.", hi: "कंपनी हर नए छात्र/फ्रेशर के लिए बेहतरीन मेंटरशिप प्रदान करती है।" },
+        "Campus": { en: "The college campus has lush green lawns and modern computer labs.", hi: "कॉलेज परिसर में हरे-भरे मैदान और आधुनिक कंप्यूटर लैब हैं।" },
+        "Concentrate": { en: "Turn off notifications when you need to concentrate on difficult problems.", hi: "जब आपको कठिन समस्याओं पर ध्यान केंद्रित करना हो तो नोटिफिकेशन बंद कर दें।" },
+        "Confident": { en: "Speak slowly and clearly to sound confident in any discussion.", hi: "किसी भी चर्चा में आत्मविश्वासी दिखने के लिए धीरे और स्पष्ट बोलें।" },
+        "Interview": { en: "Preparation and honesty are the two keys to cracking an interview.", hi: "इंटरव्यू पास करने के दो मुख्य नियम तैयारी और ईमानदारी हैं।" },
+        "Resume": { en: "A well-structured resume highlights your strengths within seconds.", hi: "एक सुव्यवस्थित बायोडाटा कुछ ही सेकंडों में आपकी खूबियों को उजागर करता है।" },
+        "Experience": { en: "Building real applications provides invaluable engineering experience.", hi: "वास्तविक एप्लिकेशन बनाने से अमूल्य इंजीनियरिंग अनुभव मिलता है।" },
+        "Strength": { en: "My ability to stay calm under pressure is my biggest strength.", hi: "दबाव में भी शांत रहने की मेरी क्षमता मेरी सबसे बड़ी ताकत है।" },
+        "Weakness": { en: "Acknowledging your weakness is the first step toward self-improvement.", hi: "अपनी कमजोरी को स्वीकार करना आत्म-सुधार की दिशा में पहला कदम है।" },
+        "Opportunity": { en: "Every challenge brings a hidden opportunity to learn something new.", hi: "हर चुनौती कुछ नया सीखने का एक छिपा हुआ अवसर लाती है।" },
+        "Responsibility": { en: "Taking full responsibility for your code builds trust in the team.", hi: "अपने कोड की पूरी जिम्मेदारी लेने से टीम में विश्वास बढ़ता है।" },
+        "Career": { en: "Consistent effort is the foundation of a successful tech career.", hi: "लगातार प्रयास एक सफल तकनीकी करियर की नींव है।" },
+        "Teamwork": { en: "Great software is always built through excellent teamwork.", hi: "बेहतरीन सॉफ्टवेयर हमेशा शानदार टीमवर्क से बनता है।" },
+        "Professional": { en: "Maintain professional communication in all official emails.", hi: "सभी आधिकारिक ईमेलों में पेशेवर बातचीत बनाए रखें।" },
+        "Skill": { en: "Problem-solving is the most critical skill for every developer.", hi: "समस्या समाधान हर डेवलपर के लिए सबसे महत्वपूर्ण कौशल है।" },
+        "Goal": { en: "Break down your yearly goal into small daily targets.", hi: "अपने वार्षिक लक्ष्य को छोटे दैनिक लक्ष्यों में विभाजित करें।" },
+        "Achieve": { en: "Focus and perseverance will help you achieve whatever you desire.", hi: "एकाग्रता और दृढ़ता आपको वह सब हासिल करने में मदद करेगी जो आप चाहते हैं।" },
+        "Challenge": { en: "Embrace every difficult challenge as an opportunity to grow.", hi: "हर कठिन चुनौती को आगे बढ़ने के अवसर के रूप में स्वीकार करें।" },
+        "Actually": { en: "Actually, I have already tested this feature and it works smoothly.", hi: "असल में, मैंने इस फीचर का परीक्षण कर लिया है और यह सुचारू रूप से काम कर रहा है।" },
+        "Honestly": { en: "Honestly speaking, practice makes all the difference in fluency.", hi: "सच कहूँ तो, अभ्यास ही बोलने की क्षमता में सारा अंतर लाता है।" },
+        "By the way": { en: "By the way, did you attend the morning seminar?", hi: "वैसे, क्या आप सुबह के सेमिनार में शामिल हुए थे?" },
+        "In my opinion": { en: "In my opinion, hands-on practice is much better than pure theory.", hi: "मेरी राय में, केवल सिद्धांत की तुलना में व्यावहारिक अभ्यास कहीं बेहतर है।" },
+        "Exactly": { en: "That is exactly the point I was trying to highlight.", hi: "बिल्कुल वही बात जिसे मैं उजागर करने की कोशिश कर रहा था।" },
+        "As soon as possible": { en: "I will review your code and send feedback as soon as possible.", hi: "मैं आपके कोड की समीक्षा करूँगा और जितनी जल्दी हो सके फीडबैक भेजूँगा।" },
+        "No problem": { en: "Thank you for the help! — No problem at all, happy to help!", hi: "मदद के लिए धन्यवाद! — कोई बात नहीं, मदद करके खुशी हुई!" },
+        "Piece of cake": { en: "Once you understand the basic syntax, building a web page is a piece of cake.", hi: "एक बार बुनियादी सिंटैक्स समझ जाने के बाद वेब पेज बनाना बच्चों का खेल है।" },
+        "Hit the books": { en: "Final exams start next week, so it is time to hit the books.", hi: "अगले हफ्ते फाइनल परीक्षाएं शुरू हो रही हैं, इसलिए अब जमकर पढ़ाई करने का समय है।" },
+        "Break a leg": { en: "You have your big interview today — break a leg!", hi: "आज आपका बड़ा इंटरव्यू है — बहुत-बहुत शुभकामनाएं!" }
+      };
+
+      function getSmartWordExample(word) {
+        // 1. Direct match in curated alternate examples
+        if (VOC_ALT_EXAMPLES[word]) return VOC_ALT_EXAMPLES[word];
+        const lower = word.toLowerCase().trim();
+        for (const [k, v] of Object.entries(VOC_ALT_EXAMPLES)) {
+          if (k.toLowerCase() === lower) return v;
+        }
+
+        // 2. Direct match in VOC_BOOK primary examples
+        const bookMatch = VOC_BOOK.find(x => x.w.toLowerCase() === lower);
+        if (bookMatch && bookMatch.e) {
+          return {
+            en: bookMatch.e,
+            hi: bookMatch.eh || `"${bookMatch.w}" का दैनिक बातचीत में प्रयोग।`
+          };
+        }
+
+        // 3. Smart linguistic template for custom words
+        return {
+          en: `You can use "${word}" to express your thoughts naturally in conversation.`,
+          hi: `बातचीत में अपने विचारों को स्वाभाविक रूप से व्यक्त करने के लिए आप "${word}" का उपयोग कर सकते हैं।`
+        };
+      }
+
       async function askGeminiWordExample(word, cardId) {
         const fb = $(`#${cardId}-feedback`);
-        if (fb) fb.innerHTML = `<p class="mu" style="margin-top:6px">✨ Gemini naya sentence generate kar raha hai...</p>`;
+        if (fb) fb.innerHTML = `<p class="mu" style="margin-top:6px">✨ Generating AI example for "<b>${esc(word)}</b>"...</p>`;
         const prompt = `You are an English coach. Create ONE simple, realistic daily-spoken English sentence using the word "${word}", and its Hindi translation. Output JSON only: {"en":"...","hi":"..."}`;
-        const res = await callGeminiApi(prompt);
-        if (res && res.en && fb) {
+
+        let example = null;
+        let isAiGenerated = false;
+
+        try {
+          const res = await callGeminiApi(prompt);
+          if (res && (res.en || res.sentence || res.english || res.reply)) {
+            const enText = res.en || res.sentence || res.english || res.reply;
+            const hiText = res.hi || res.hindi || res.translation || "";
+            if (enText && enText.trim()) {
+              example = { en: enText.trim(), hi: hiText.trim() };
+              isAiGenerated = true;
+            }
+          }
+        } catch (e) {
+          console.warn("AI example generation error:", e);
+        }
+
+        // Guaranteed high-yield contextual fallback if offline or network lag
+        if (!example || !example.en) {
+          example = getSmartWordExample(word);
+          isAiGenerated = false;
+        }
+
+        if (fb && example && example.en) {
           fb.innerHTML = `
-            <div style="background:var(--pr2);padding:10px 12px;border-radius:12px;margin-top:8px">
-              <p style="margin:0 0 2px">✨ <b>“${esc(res.en)}”</b></p>
-              <p class="mu" style="margin:0;font-size:13px">${esc(res.hi || "")}</p>
-              <div class="row" style="margin-top:6px">
-                <button class="s" style="padding:4px 8px;font-size:12px" onclick="speak('${esc(res.en).replace(/'/g, "\\'")}')">🔊 Listen</button>
-                <button class="s" style="padding:4px 8px;font-size:12px" onclick="practiceStoryLine('${esc(res.en).replace(/'/g, "\\'")}', '${cardId}')">🎤 Speak</button>
+            <div style="background:var(--pr2);border:1px solid rgba(99,102,241,0.25);padding:12px 14px;border-radius:14px;margin-top:10px;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span style="font-size:11.5px;font-weight:700;color:var(--pr);letter-spacing:0.4px">
+                  ${isAiGenerated ? '✨ AI GENERATED EXAMPLE' : '💡 COACH CURATED EXAMPLE'}
+                </span>
+                <span class="badge" style="font-size:10px;padding:2px 7px;background:rgba(99,102,241,0.18);color:var(--pr)">New Sentence</span>
+              </div>
+              <p style="margin:2px 0 4px;font-size:15px;font-weight:600;color:var(--tx)">“${esc(example.en)}”</p>
+              ${example.hi ? `<p class="mu" style="margin:0;font-size:13.5px;color:var(--mu)">${esc(example.hi)}</p>` : ''}
+              <div class="row" style="margin-top:8px;gap:8px">
+                <button class="s" style="padding:6px 12px;font-size:12.5px;font-weight:600" onclick="speak('${esc(example.en).replace(/'/g, "\\'")}')">🔊 Listen</button>
+                <button class="s" style="padding:6px 12px;font-size:12.5px;font-weight:600" onclick="practiceStoryLine('${esc(example.en).replace(/'/g, "\\'")}', '${cardId}')">🎤 Speak</button>
               </div>
             </div>
           `;
-          speak(res.en);
-        } else if (fb) {
-          fb.innerHTML = `<p class="mu" style="margin-top:6px">Could not load AI example. Please check internet or Gemini key.</p>`;
+          speak(example.en);
         }
       }
       window.askGeminiWordExample = askGeminiWordExample;

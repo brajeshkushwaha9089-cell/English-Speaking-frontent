@@ -7,7 +7,14 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <title>Bolo – English Speaking Partner</title>
-    <script src="config.local.js"></script>
+    <script>
+      if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+        var _s = document.createElement("script");
+        _s.src = "config.local.js";
+        _s.onerror = function() {};
+        document.head.appendChild(_s);
+      }
+    </script>
     <style>
       :root {
         --bg: #f6f7fb;
@@ -516,12 +523,14 @@
       const $ = (s) => document.querySelector(s),
         A = $("#app");
       const K = "bolo1";
+      const R = {};
+      window.R = R;
 
       // ---------- Supabase Cloud Configuration ----------
       const localCfg = (typeof window !== "undefined" && window.LOCAL_CONFIG) || {};
       const SUPABASE_CONFIG = {
         url: localCfg.supabaseUrl || "https://jyatlsllsdmtdmvohhfz.supabase.co",
-        publishableKey: localCfg.supabasePublishableKey || "",
+        publishableKey: localCfg.supabasePublishableKey || "sb_publishable_Zku7v5nercpKO4wraLHT_A_LNSOGXih",
         secretKey: localCfg.supabaseSecretKey || "",
         bucket: "bolo_cloud",
       };

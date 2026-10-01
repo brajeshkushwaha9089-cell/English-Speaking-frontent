@@ -23,18 +23,26 @@
     </script>
         <style>
       :root {
-        --bg: #0b0f19;
-        --bg-grad: radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.09) 0%, transparent 40%),
-                   radial-gradient(circle at 90% 90%, rgba(139, 92, 246, 0.07) 0%, transparent 40%),
-                   #0b0f19;
-        --card: #131b2e;
-        --card-hover: #18223a;
+        --bg: #070a13;
+        --bg-grad: 
+          radial-gradient(ellipse 95% 60% at 50% -12%, rgba(99, 102, 241, 0.32) 0%, transparent 75%),
+          radial-gradient(circle 650px at 12% 28%, rgba(139, 92, 246, 0.2) 0%, transparent 70%),
+          radial-gradient(circle 600px at 88% 68%, rgba(14, 165, 233, 0.18) 0%, transparent 70%),
+          radial-gradient(circle 500px at 45% 95%, rgba(236, 72, 153, 0.12) 0%, transparent 75%),
+          #070a13;
+        --bg-grid: 
+          linear-gradient(to right, rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.024) 1px, transparent 1px);
+        --card: rgba(15, 22, 38, 0.72);
+        --card-hover: rgba(22, 32, 54, 0.85);
+        --card-border: rgba(255, 255, 255, 0.1);
+        --card-glow: 0 12px 36px -6px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
         --tx: #f8fafc;
         --tx-sec: #cbd5e1;
         --mu: #94a3b8;
         --pr: #6366f1;
         --pr-light: #818cf8;
-        --pr2: rgba(99, 102, 241, 0.16);
+        --pr2: rgba(99, 102, 241, 0.18);
         --ok: #10b981;
         --ok-bg: rgba(16, 185, 129, 0.14);
         --ok-border: rgba(16, 185, 129, 0.35);
@@ -43,8 +51,8 @@
         --bad-bg: rgba(239, 68, 68, 0.14);
         --bad-border: rgba(239, 68, 68, 0.35);
         --bad-text: #fca5a5;
-        --bd: rgba(255, 255, 255, 0.09);
-        --bd-focus: rgba(99, 102, 241, 0.5);
+        --bd: rgba(255, 255, 255, 0.1);
+        --bd-focus: rgba(99, 102, 241, 0.6);
         --warn: #f59e0b;
         --warn-bg: rgba(245, 158, 11, 0.14);
         --warn-border: rgba(245, 158, 11, 0.35);
@@ -55,9 +63,18 @@
       }
       :root[data-theme="light"] {
         --bg: #f8fafc;
-        --bg-grad: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
-        --card: #ffffff;
-        --card-hover: #f1f5f9;
+        --bg-grad: 
+          radial-gradient(ellipse 90% 55% at 50% -12%, rgba(99, 102, 241, 0.15) 0%, transparent 75%),
+          radial-gradient(circle 600px at 15% 25%, rgba(139, 92, 246, 0.1) 0%, transparent 70%),
+          radial-gradient(circle 550px at 88% 65%, rgba(14, 165, 233, 0.08) 0%, transparent 70%),
+          #f8fafc;
+        --bg-grid: 
+          linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+        --card: rgba(255, 255, 255, 0.85);
+        --card-hover: rgba(248, 250, 252, 0.98);
+        --card-border: rgba(226, 232, 240, 0.85);
+        --card-glow: 0 10px 30px -4px rgba(15, 23, 42, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
         --tx: #0f172a;
         --tx-sec: #334155;
         --mu: #64748b;
@@ -87,13 +104,75 @@
       }
       body {
         margin: 0;
-        background: var(--bg);
-        background-image: var(--bg-grad);
+        background-color: var(--bg);
+        background-image: var(--bg-grid), var(--bg-grad);
+        background-size: 36px 36px, 100% 100%;
         background-attachment: fixed;
         color: var(--tx);
         font: 15px/1.6 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      /* Ambient Cosmic Aurora Floating Background Orbs */
+      .ambient-glow-layer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+        opacity: 0.6;
+      }
+      .ambient-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        will-change: transform;
+      }
+      .ambient-orb.orb-indigo {
+        top: -80px;
+        left: 20%;
+        width: 520px;
+        height: 520px;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.36) 0%, rgba(79, 70, 229, 0) 70%);
+        animation: floatOrbIndigo 22s infinite ease-in-out alternate;
+      }
+      .ambient-orb.orb-cyan {
+        top: 35%;
+        right: -100px;
+        width: 560px;
+        height: 560px;
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.28) 0%, rgba(56, 189, 248, 0) 70%);
+        animation: floatOrbCyan 26s infinite ease-in-out alternate;
+      }
+      .ambient-orb.orb-purple {
+        bottom: -90px;
+        left: 10%;
+        width: 540px;
+        height: 540px;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.26) 0%, rgba(139, 92, 246, 0) 70%);
+        animation: floatOrbPurple 24s infinite ease-in-out alternate;
+      }
+      @keyframes floatOrbIndigo {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(60px, 90px) scale(1.12); }
+        100% { transform: translate(-50px, 40px) scale(0.94); }
+      }
+      @keyframes floatOrbCyan {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-90px, -70px) scale(1.1); }
+        100% { transform: translate(40px, 60px) scale(0.92); }
+      }
+      @keyframes floatOrbPurple {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(70px, -80px) scale(1.14); }
+        100% { transform: translate(-60px, 40px) scale(0.96); }
       }
       #app {
         max-width: 740px;
@@ -108,11 +187,20 @@
         }
       }
       h1 {
-        font-size: 26px;
+        font-size: 28px;
         font-weight: 800;
-        letter-spacing: -0.5px;
+        letter-spacing: -0.6px;
         margin: 8px 0;
         color: var(--tx);
+        display: inline-block;
+        background: linear-gradient(135deg, #ffffff 40%, #c7d2fe 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      :root[data-theme="light"] h1 {
+        background: linear-gradient(135deg, #0f172a 40%, #4338ca 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
       h2 {
         font-size: 20px;
@@ -133,15 +221,19 @@
       }
       .card {
         background: var(--card);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
         border: 1px solid var(--bd);
-        border-radius: 20px;
-        padding: 20px;
+        border-radius: 22px;
+        padding: 22px;
         margin: 16px 0;
-        box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.3);
-        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: var(--card-glow);
+        transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.24s ease, box-shadow 0.24s ease;
       }
       .card:hover {
-        border-color: rgba(99, 102, 241, 0.35);
+        border-color: rgba(99, 102, 241, 0.45);
+        box-shadow: 0 16px 42px -6px rgba(0, 0, 0, 0.55), 0 0 25px rgba(99, 102, 241, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
+        transform: translateY(-2px);
       }
       .mu {
         color: var(--mu);
@@ -199,23 +291,27 @@
         }
       }
       .grid button {
-        padding: 16px 12px;
+        padding: 18px 14px;
         background: var(--card);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         color: var(--tx);
         border: 1px solid var(--bd);
-        border-radius: 18px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+        border-radius: 20px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 6px;
-        font-size: 14px;
-        font-weight: 600;
+        gap: 8px;
+        font-size: 14.5px;
+        font-weight: 700;
+        transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       }
       .grid button:hover {
-        border-color: var(--pr);
+        border-color: rgba(99, 102, 241, 0.55);
         background: var(--card-hover);
-        transform: translateY(-2px);
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(99, 102, 241, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.16);
       }
       .badge {
         display: inline-flex;
@@ -232,21 +328,21 @@
       }
       nav {
         position: fixed;
-        bottom: 16px;
+        bottom: 18px;
         left: 50%;
         transform: translateX(-50%);
-        width: calc(100% - 24px);
+        width: calc(100% - 28px);
         max-width: 680px;
-        background: rgba(19, 27, 46, 0.92);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 26px;
+        background: rgba(13, 19, 34, 0.88);
+        backdrop-filter: blur(24px) saturate(200%);
+        -webkit-backdrop-filter: blur(24px) saturate(200%);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 28px;
         display: flex;
         justify-content: space-around;
         align-items: center;
-        padding: 8px 10px;
-        box-shadow: 0 14px 40px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        padding: 10px 12px;
+        box-shadow: 0 16px 45px -6px rgba(0, 0, 0, 0.68), 0 0 24px rgba(99, 102, 241, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.16);
         z-index: 1000;
       }
       nav button {
@@ -737,6 +833,43 @@
         border-color: var(--pr);
       }
 
+      /* Glassmorphism Popup Modals */
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(4, 7, 15, 0.78);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 20px;
+        animation: fadeInModal 0.2s ease;
+      }
+      .modal {
+        background: rgba(16, 23, 40, 0.95);
+        backdrop-filter: blur(24px) saturate(190%);
+        -webkit-backdrop-filter: blur(24px) saturate(190%);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        border-radius: 24px;
+        padding: 26px 22px;
+        max-width: 500px;
+        width: 100%;
+        max-height: 85vh;
+        overflow-y: auto;
+        animation: popModal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes fadeInModal {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes popModal {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+
       .partner-card.selected {
         border-color: var(--pr);
         background: var(--pr2);
@@ -745,6 +878,12 @@
     </style>
   </head>
   <body>
+    <!-- Ambient Cosmic Aurora Floating Background Orbs -->
+    <div class="ambient-glow-layer" aria-hidden="true">
+      <div class="ambient-orb orb-indigo"></div>
+      <div class="ambient-orb orb-cyan"></div>
+      <div class="ambient-orb orb-purple"></div>
+    </div>
     <div id="banner-area"></div>
     <div id="app"></div>
     <nav id="nav"></nav>

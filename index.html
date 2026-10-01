@@ -1,0 +1,2879 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Bolo – English Speaking Partner</title>
+    <script src="config.local.js"></script>
+    <style>
+      :root {
+        --bg: #f6f7fb;
+        --card: #fff;
+        --tx: #1b1f2a;
+        --mu: #6b7285;
+        --pr: #5b5bf0;
+        --pr2: #eceafe;
+        --ok: #12a36a;
+        --bad: #e5484d;
+        --bd: #e4e6ee;
+        --warn: #d97706;
+        --warn-bg: #fffbeb;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #0f1117;
+          --card: #181b25;
+          --tx: #eef0f6;
+          --mu: #98a0b5;
+          --pr: #8b8bff;
+          --pr2: #23234a;
+          --bd: #2a2e3d;
+          --warn: #fbbf24;
+          --warn-bg: #2b2311;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #0f1117;
+        --card: #181b25;
+        --tx: #eef0f6;
+        --mu: #98a0b5;
+        --pr: #8b8bff;
+        --pr2: #23234a;
+        --bd: #2a2e3d;
+        --warn: #fbbf24;
+        --warn-bg: #2b2311;
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--tx);
+        font:
+          16px/1.5 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+      #app {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 16px 16px 90px;
+        min-height: 100vh;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 8px 0;
+      }
+      h2 {
+        font-size: 19px;
+        margin: 0 0 8px;
+      }
+      p {
+        margin: 6px 0;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 18px;
+        padding: 16px;
+        margin: 12px 0;
+      }
+      .mu {
+        color: var(--mu);
+        font-size: 14px;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        border: 0;
+        border-radius: 14px;
+        padding: 14px 16px;
+        background: var(--pr);
+        color: #fff;
+        font-weight: 600;
+        transition: transform 0.1s, opacity 0.1s;
+      }
+      button:active {
+        transform: scale(0.98);
+      }
+      button.s {
+        background: var(--pr2);
+        color: var(--pr);
+      }
+      button.g {
+        background: transparent;
+        color: var(--mu);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .grid button {
+        padding: 18px 8px;
+      }
+      .opt {
+        display: block;
+        width: 100%;
+        text-align: left;
+        margin: 8px 0;
+        background: var(--card);
+        color: var(--tx);
+        border: 1.5px solid var(--bd);
+      }
+      .opt.on {
+        border-color: var(--pr);
+        background: var(--pr2);
+      }
+      .big {
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .pron {
+        color: var(--pr);
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .mic {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        font-size: 38px;
+        display: block;
+        margin: 14px auto 6px;
+        padding: 0;
+        box-shadow: 0 4px 14px rgba(91, 91, 240, 0.3);
+      }
+      .mic.rec {
+        background: var(--bad);
+        box-shadow: 0 0 20px rgba(229, 72, 77, 0.6);
+        animation: p 1s infinite;
+      }
+      @keyframes p {
+        50% {
+          transform: scale(1.08);
+        }
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .row > * {
+        flex: 1;
+      }
+      .bub {
+        padding: 10px 14px;
+        border-radius: 16px;
+        margin: 8px 0;
+        max-width: 88%;
+      }
+      .ai {
+        background: var(--pr2);
+      }
+      .me {
+        background: var(--pr);
+        color: #fff;
+        margin-left: auto;
+      }
+      .fix {
+        border-left: 4px solid var(--ok);
+        padding: 8px 12px;
+        background: var(--card);
+        border-radius: 10px;
+        margin: 6px 0;
+        font-size: 15px;
+      }
+      nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--card);
+        border-top: 1px solid var(--bd);
+        display: flex;
+        justify-content: space-around;
+        padding: 6px 0 calc(6px + env(safe-area-inset-bottom, 0px));
+        z-index: 100;
+      }
+      nav button {
+        background: none;
+        color: var(--mu);
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+      nav button.on {
+        color: var(--pr);
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        font: inherit;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1.5px solid var(--bd);
+        background: var(--card);
+        color: var(--tx);
+      }
+      .bar {
+        height: 10px;
+        background: var(--pr2);
+        border-radius: 9px;
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--pr);
+      }
+      .stat {
+        text-align: center;
+      }
+      .stat b {
+        font-size: 24px;
+        display: block;
+      }
+      .days {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 6px;
+      }
+      .days span {
+        aspect-ratio: 1;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--pr2);
+        font-size: 13px;
+      }
+      .days .d {
+        background: var(--ok);
+        color: #fff;
+      }
+      .days .t {
+        outline: 2px solid var(--pr);
+      }
+      /* Components */
+      .pills {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 4px 0 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .pills::-webkit-scrollbar {
+        height: 4px;
+      }
+      .pills::-webkit-scrollbar-thumb {
+        background: var(--bd);
+        border-radius: 4px;
+      }
+      .pill {
+        flex-shrink: 0;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1.5px solid var(--bd);
+        background: var(--card);
+        color: var(--tx);
+        cursor: pointer;
+      }
+      .pill.active {
+        background: var(--pr);
+        color: #fff;
+        border-color: var(--pr);
+        font-weight: 600;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background: var(--pr2);
+        color: var(--pr);
+        font-weight: 600;
+      }
+      .mic-banner {
+        background: var(--warn-bg);
+        color: var(--warn);
+        border: 1px solid var(--bd);
+        border-radius: 14px;
+        padding: 10px 14px;
+        margin: 10px 0;
+        font-size: 13.5px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+        padding: 16px;
+      }
+      .modal {
+        background: var(--card);
+        border-radius: 20px;
+        max-width: 440px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 20px;
+        border: 1px solid var(--bd);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      .quiz-card {
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        border: 2px dashed var(--pr);
+        border-radius: 18px;
+        padding: 20px;
+        margin: 14px 0;
+        cursor: pointer;
+        background: var(--card);
+      }
+      .story-box {
+        border-left: 4px solid var(--pr);
+        padding: 12px 14px;
+        margin: 10px 0;
+        background: var(--card);
+        border-radius: 12px;
+      }
+
+      /* LIVE VOICE CALL BOT STYLES */
+      .voice-call-screen {
+        min-height: calc(100vh - 120px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        text-align: center;
+        padding: 8px 0;
+      }
+      .voice-orb-container {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        margin: 18px auto 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .voice-orb {
+        width: 136px;
+        height: 136px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--pr), #905bf0);
+        box-shadow: 0 0 35px rgba(91, 91, 240, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 58px;
+        transition: all 0.3s ease;
+        user-select: none;
+        cursor: pointer;
+      }
+      .voice-orb.listening {
+        background: linear-gradient(135deg, #e5484d, #f76808);
+        box-shadow: 0 0 50px rgba(229, 72, 77, 0.7);
+        animation: orb-pulse 1.1s infinite ease-in-out;
+      }
+      .voice-orb.speaking {
+        background: linear-gradient(135deg, #12a36a, #20c997);
+        box-shadow: 0 0 50px rgba(18, 163, 106, 0.7);
+        animation: orb-speak 0.85s infinite alternate;
+      }
+      .voice-orb.thinking {
+        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+        box-shadow: 0 0 50px rgba(139, 92, 246, 0.7);
+        animation: orb-think 1.4s infinite linear;
+      }
+      .voice-orb.paused {
+        background: linear-gradient(135deg, #64748b, #475569);
+        box-shadow: 0 0 20px rgba(100, 116, 139, 0.4);
+      }
+      @keyframes orb-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.14); }
+      }
+      @keyframes orb-speak {
+        0% { transform: scale(0.96); }
+        100% { transform: scale(1.10); }
+      }
+      @keyframes orb-think {
+        0% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(180deg) scale(1.07); }
+        100% { transform: rotate(360deg) scale(1); }
+      }
+      .wave-bars {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        justify-content: center;
+        height: 30px;
+        margin: 8px 0;
+      }
+      .wave-bar {
+        width: 4px;
+        background: var(--ok);
+        border-radius: 4px;
+        animation: wave-bar-anim 0.85s infinite ease-in-out;
+      }
+      .wave-bar:nth-child(1) { height: 10px; animation-delay: 0.1s; }
+      .wave-bar:nth-child(2) { height: 22px; animation-delay: 0.2s; }
+      .wave-bar:nth-child(3) { height: 30px; animation-delay: 0.3s; }
+      .wave-bar:nth-child(4) { height: 18px; animation-delay: 0.4s; }
+      .wave-bar:nth-child(5) { height: 26px; animation-delay: 0.15s; }
+      .wave-bar:nth-child(6) { height: 14px; animation-delay: 0.25s; }
+      @keyframes wave-bar-anim {
+        0%, 100% { transform: scaleY(0.4); }
+        50% { transform: scaleY(1.35); }
+      }
+      .call-transcript-box {
+        width: 100%;
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 12px 14px;
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 16px;
+        text-align: left;
+        margin: 10px 0;
+        font-size: 14.5px;
+      }
+      .call-ctrl-bar {
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        margin-top: 14px;
+      }
+      .call-btn-circle {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        padding: 0;
+        display: grid;
+        place-items: center;
+        font-size: 26px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      }
+      .call-btn-circle.end {
+        background: var(--bad);
+        color: #fff;
+        box-shadow: 0 4px 20px rgba(229, 72, 77, 0.4);
+      }
+      .partner-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1.5px solid var(--bd);
+        margin: 10px 0;
+        cursor: pointer;
+        text-align: left;
+        background: var(--card);
+        transition: all 0.2s ease;
+      }
+      .partner-card.selected {
+        border-color: var(--pr);
+        background: var(--pr2);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="banner-area"></div>
+    <div id="app"></div>
+    <nav id="nav"></nav>
+    <div id="modal-root"></div>
+
+    <script>
+      const $ = (s) => document.querySelector(s),
+        A = $("#app");
+      const K = "bolo1";
+
+      // ---------- Supabase Cloud Configuration ----------
+      const localCfg = (typeof window !== "undefined" && window.LOCAL_CONFIG) || {};
+      const SUPABASE_CONFIG = {
+        url: localCfg.supabaseUrl || "https://jyatlsllsdmtdmvohhfz.supabase.co",
+        publishableKey: localCfg.supabasePublishableKey || "",
+        secretKey: localCfg.supabaseSecretKey || "",
+        bucket: "bolo_cloud",
+      };
+
+      let S = {
+        name: "",
+        level: -1,
+        goal: "",
+        streak: 0,
+        last: "",
+        secs: 0,
+        convos: 0,
+        sent: 0,
+        words: [],
+        customWords: [],
+        geminiKey: localCfg.geminiKey || "",
+        backendUrl: localCfg.backendUrl || "",
+        aiMode: "gemini",
+        userId: "brajesh_main",
+        lastCloudSync: null,
+        mist: [],
+        theme: "auto",
+        done: {},
+      };
+
+      try {
+        Object.assign(S, JSON.parse(localStorage.getItem(K) || "{}"));
+      } catch (e) {}
+
+      if (!S.geminiKey && localCfg.geminiKey) S.geminiKey = localCfg.geminiKey;
+      if (!S.backendUrl && localCfg.backendUrl) S.backendUrl = localCfg.backendUrl;
+      if (!S.aiMode) S.aiMode = "gemini";
+      if (!S.userId) S.userId = "brajesh_main";
+      if (!Array.isArray(S.customWords)) S.customWords = [];
+
+      function getApiUrl(endpoint) {
+        const custom = S.backendUrl || (window.LOCAL_CONFIG && window.LOCAL_CONFIG.backendUrl);
+        if (custom) return custom.replace(/\/+$/, "") + endpoint;
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+          return (window.location.port === "8000" ? "" : "http://localhost:8000") + endpoint;
+        }
+        return endpoint;
+      }
+
+      function saveLocalOnly() {
+        try {
+          localStorage.setItem(K, JSON.stringify(S));
+        } catch (e) {}
+      }
+
+      // Automatic background sync to Supabase Cloud
+      let cloudSyncTimer = null;
+      async function syncToSupabaseCloud() {
+        try {
+          const userId = S.userId || "brajesh_main";
+          const payload = {
+            userId: userId,
+            data: {
+              ...S,
+              syncedAt: new Date().toISOString()
+            }
+          };
+
+          if (window.location.protocol.startsWith("http")) {
+            const res = await fetch(getApiUrl("/api/supabase/save"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+              S.lastCloudSync = new Date().toLocaleTimeString();
+              saveLocalOnly();
+              return true;
+            }
+          }
+        } catch (e) {
+          console.warn("Supabase auto-sync:", e);
+        }
+        return false;
+      }
+
+      async function loadFromSupabaseCloud() {
+        try {
+          const userId = S.userId || "brajesh_main";
+          let cloudData = null;
+
+          if (window.location.protocol.startsWith("http")) {
+            try {
+              const res = await fetch(getApiUrl(`/api/supabase/load?userId=${encodeURIComponent(userId)}`));
+              if (res.ok) {
+                cloudData = await res.json();
+              }
+            } catch (e) {}
+          }
+
+          if (!cloudData) {
+            const pubUrl = `${SUPABASE_CONFIG.url}/storage/v1/object/public/bolo_cloud/profiles/${encodeURIComponent(userId)}.json`;
+            const res = await fetch(pubUrl);
+            if (res.ok) {
+              cloudData = await res.json();
+            }
+          }
+
+          if (cloudData) {
+            Object.assign(S, cloudData);
+            saveLocalOnly();
+            return cloudData;
+          }
+        } catch (e) {
+          console.warn("Supabase cloud load error:", e);
+        }
+        return null;
+      }
+
+      const save = () => {
+        saveLocalOnly();
+        if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+        cloudSyncTimer = setTimeout(syncToSupabaseCloud, 1800);
+      };
+
+      const today = () => new Date().toISOString().slice(0, 10);
+      function touch() {
+        const t = today();
+        if (S.last !== t) {
+          const y = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+          S.streak = S.last === y ? S.streak + 1 : 1;
+          S.last = t;
+          save();
+        }
+      }
+      function theme() {
+        if (S.theme !== "auto")
+          document.documentElement.dataset.theme = S.theme;
+        else delete document.documentElement.dataset.theme;
+      }
+      theme();
+
+      // Check protocol & display friendly banner if on file://
+      function checkProtocolBanner() {
+        const b = $("#banner-area");
+        if (!b) return;
+        if (window.location.protocol === "file:") {
+          b.innerHTML = `
+            <div style="max-width:480px;margin:8px auto 0;padding:0 16px;">
+              <div class="mic-banner">
+                <div>
+                  <b>💡 Mic & Cloud Tips:</b> Local file par Chrome mic block kar sakta hai. <b>Run-Bolo.bat</b> se kholein!
+                </div>
+                <button class="s" style="padding:6px 12px;font-size:12px;white-space:nowrap" onclick="showMicHelp()">Fix Guide</button>
+              </div>
+            </div>`;
+        } else {
+          b.innerHTML = "";
+        }
+      }
+
+      // ---------- Google Gemini AI API Client ----------
+      async function callGeminiApi(promptText) {
+        // 1. Try Backend Proxy first (production on Render / local server with safe keys)
+        try {
+          const proxyRes = await fetch(getApiUrl("/api/gemini/chat"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: promptText, key: S.geminiKey || "" })
+          });
+          if (proxyRes.ok) {
+            const data = await proxyRes.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+              return JSON.parse(clean);
+            }
+          }
+        } catch (e) {
+          // Fallback to client-side direct request if backend proxy is unavailable
+        }
+
+        // 2. Client-side direct call fallback
+        const key = S.geminiKey || (window.LOCAL_CONFIG && window.LOCAL_CONFIG.geminiKey) || "";
+        if (!key) return null;
+
+        const models = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash"];
+        for (const model of models) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: {
+                  responseMimeType: "application/json",
+                  temperature: 0.7,
+                },
+              }),
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+              return JSON.parse(clean);
+            }
+          } catch (e) {
+            console.warn(`Gemini model ${model} failed:`, e);
+          }
+        }
+        return null;
+      }
+      window.callGeminiApi = callGeminiApi;
+
+      // ---------- Comprehensive Data ----------
+      const WARM = [
+        [
+          "Tumhara naam kya hai?",
+          "What is your name?",
+          "व्हाट इज़ योर नेम?",
+          "Tumhara naam kya hai? Jawab do: My name is ___.",
+        ],
+        [
+          "Tum kahan se ho?",
+          "Where are you from?",
+          "वेयर आर यू फ्रॉम?",
+          "Tum kahan se ho? Jawab: I am from ___.",
+        ],
+        [
+          "Tum kya padh rahe ho?",
+          "What are you studying?",
+          "व्हाट आर यू स्टडीइंग?",
+          "Jawab: I am studying B.Tech.",
+        ],
+        [
+          "Tum kis college mein padhte ho?",
+          "Which college do you study in?",
+          "विच कॉलेज डू यू स्टडी इन?",
+          "Jawab: I study in ___ college.",
+        ],
+        [
+          "Tumhe kya karna pasand hai?",
+          "What do you like to do?",
+          "व्हाट डू यू लाइक टू डू?",
+          "Jawab: I like to ___.",
+        ],
+      ];
+
+      // Vocabulary Book Database (120+ Practical High-Yield Words & Phrases)
+      const VOC_BOOK = [
+        // Daily Life
+        { w: "Wake up", h: "जागना / उठना", p: "वेक अप", c: "daily", e: "I wake up at six AM every morning.", eh: "मैं हर सुबह 6 बजे उठता हूँ।" },
+        { w: "Brush", h: "दांत साफ करना", p: "ब्रश", c: "daily", e: "Don't forget to brush your teeth.", eh: "अपने दांत ब्रश करना मत भूलना।" },
+        { w: "Hurry up", h: "जल्दी करना", p: "हरी अप", c: "daily", e: "Hurry up, or we will miss the bus.", eh: "जल्दी करो, नहीं तो बस छूट जाएगी।" },
+        { w: "Exhausted", h: "बहुत ज्यादा थका हुआ", p: "एग्जॉस्टेड", c: "daily", e: "I am completely exhausted after college.", eh: "कॉलेज के बाद मैं पूरी तरह थक गया हूँ।" },
+        { w: "Commute", h: "रोजाना सफर करना", p: "कम्यूट", c: "daily", e: "I commute to college by metro every day.", eh: "मैं रोज़ मेट्रो से कॉलेज आता-जाता हूँ।" },
+        { w: "Prepare", h: "तैयार करना", p: "प्रिपेयर", c: "daily", e: "She is preparing breakfast in the kitchen.", eh: "वह रसोई में नाश्ता तैयार कर रही है।" },
+        { w: "Essential", h: "बेहद जरूरी", p: "एसेंशियल", c: "daily", e: "Consistent practice is essential for English.", eh: "अंग्रेज़ी के लिए लगातार अभ्यास बहुत ज़रूरी है।" },
+        { w: "Routine", h: "दिनचर्या", p: "रूटीन", c: "daily", e: "I am following a healthy daily routine.", eh: "मैं एक अच्छी दिनचर्या का पालन कर रहा हूँ।" },
+        { w: "Habit", h: "आदत", p: "हैबिट", c: "daily", e: "Speaking English daily is a great habit.", eh: "रोज़ अंग्रेज़ी बोलना एक बहुत अच्छी आदत है।" },
+        { w: "Leisure", h: "फुर्सत / खाली समय", p: "लेज़र", c: "daily", e: "I like listening to music in my leisure time.", eh: "मुझे खाली समय में संगीत सुनना पसंद है।" },
+        { w: "Relax", h: "आराम करना / शांत होना", p: "रिलैक्स", c: "daily", e: "Take a deep breath and relax.", eh: "गहरी सांस लो और शांत हो जाओ।" },
+        { w: "Tidy up", h: "साफ-सुथरा करना", p: "टाइडी अप", c: "daily", e: "I need to tidy up my study desk.", eh: "मुझे अपनी पढ़ाई की मेज साफ करनी है।" },
+        { w: "Grocery", h: "किराने का सामान / राशन", p: "ग्रोसरी", c: "daily", e: "I will buy groceries on my way home.", eh: "मैं घर जाते समय राशन का सामान खरीद लूँगा।" },
+        { w: "Stroll", h: "टहलना", p: "स्ट्रोल", c: "daily", e: "We went for an evening stroll in the park.", eh: "हम पार्क में शाम की सैर के लिए गए।" },
+        { w: "Remind", h: "याद दिलाना", p: "रिमाइंड", c: "daily", e: "Please remind me to call my parents tonight.", eh: "कृपया मुझे आज रात माता-पिता को फोन करने की याद दिला देना।" },
+
+        // College & Studies
+        { w: "Improve", h: "सुधारना / बेहतर करना", p: "इम्प्रूव", c: "college", e: "I practice daily to improve my English.", eh: "मैं अपनी अंग्रेज़ी सुधारने के लिए रोज़ अभ्यास करता हूँ।" },
+        { w: "Assignment", h: "असाइनमेंट / दिया गया काम", p: "असाइनमेंट", c: "college", e: "I submitted my coding assignment on time.", eh: "मैंने अपना कोडिंग असाइनमेंट समय पर जमा किया।" },
+        { w: "Deadline", h: "अंतिम तारीख / समय सीमा", p: "डेडलाइन", c: "college", e: "The project deadline is this Friday.", eh: "प्रोजेक्ट की अंतिम तिथि इस शुक्रवार है।" },
+        { w: "Lecture", h: "कक्षा / व्याख्यान", p: "लेक्चर", c: "college", e: "Today's computer science lecture was very interesting.", eh: "आज का कंप्यूटर साइंस का लेक्चर बहुत दिलचस्प था।" },
+        { w: "Attendance", h: "उपस्थिति", p: "अटेंडेंस", c: "college", e: "Minimum seventy-five percent attendance is compulsory.", eh: "75% उपस्थिति अनिवार्य है।" },
+        { w: "Syllabus", h: "पाठ्यक्रम", p: "सिलेबस", c: "college", e: "We have already covered half of the syllabus.", eh: "हमने आधा पाठ्यक्रम पहले ही पूरा कर लिया है।" },
+        { w: "Doubt", h: "शंका / सवाल", p: "डाउट", c: "college", e: "Sir, I have a small doubt in this question.", eh: "सर, मुझे इस सवाल में एक छोटा सा संदेह है।" },
+        { w: "Explain", h: "समझाना / स्पष्ट करना", p: "एक्सप्लेन", c: "college", e: "Can you explain this algorithm once again?", eh: "क्या आप इस एल्गोरिथम को एक बार फिर समझा सकते हैं?" },
+        { w: "Understand", h: "समझना", p: "अंडरस्टैंड", c: "college", e: "I clearly understand this topic now.", eh: "मैं अब इस विषय को अच्छे से समझ गया हूँ।" },
+        { w: "Revise", h: "दोहराना / रिवीजन करना", p: "रिवाइज़", c: "college", e: "I need to revise all formulas tonight.", eh: "मुझे आज रात सभी फॉर्मूले दोहराने हैं।" },
+        { w: "Presentation", h: "प्रस्तुति / प्रेजेंटेशन", p: "प्रेजेंटेशन", c: "college", e: "I am preparing a presentation on artificial intelligence.", eh: "मैं आर्टिफिशियल इंटेलिजेंस पर एक प्रेजेंटेशन तैयार कर रहा हूँ।" },
+        { w: "Project", h: "परियोजना / प्रोजेक्ट", p: "प्रोजेक्ट", c: "college", e: "We are developing a web application project.", eh: "हम एक वेब एप्लिकेशन प्रोजेक्ट बना रहे हैं।" },
+        { w: "Fresher", h: "नया छात्र / नया कर्मचारी", p: "फ्रेशर", c: "college", e: "As a fresher, I am eager to learn new technologies.", eh: "एक नए छात्र के रूप में, मैं नई तकनीक सीखने के लिए उत्सुक हूँ।" },
+        { w: "Campus", h: "परिसर / कैंपस", p: "कैंपस", c: "college", e: "Our college campus has high-speed Wi-Fi.", eh: "हमारे कॉलेज कैंपस में तेज़ वाई-फाई है।" },
+        { w: "Concentrate", h: "ध्यान केंद्रित करना", p: "कॉन्सन्ट्रेट", c: "college", e: "Please stay quiet so I can concentrate on studying.", eh: "कृपया शांत रहें ताकि मैं पढ़ाई पर ध्यान केंद्रित कर सकूँ।" },
+
+        // Job & Interview
+        { w: "Confident", h: "आत्मविश्वासी / भरोसेमंद", p: "कॉन्फिडेंट", c: "job", e: "I feel confident about my interview today.", eh: "आज मुझे अपने इंटरव्यू को लेकर पूरा आत्मविश्वास है।" },
+        { w: "Interview", h: "साक्षात्कार", p: "इंटरव्यू", c: "job", e: "I have a technical interview scheduled for Monday.", eh: "सोमवार को मेरा एक टेक्निकल इंटरव्यू तय है।" },
+        { w: "Resume", h: "बायोडाटा / रेज़्युमे", p: "रेज़्युमे", c: "job", e: "Keep your resume clean and up to date.", eh: "अपना बायोडाटा साफ़ और अपडेटेड रखें।" },
+        { w: "Experience", h: "अनुभव", p: "एक्सपीरियंस", c: "job", e: "Hands-on project experience matters a lot.", eh: "प्रोजेक्ट का व्यावहारिक अनुभव बहुत मायने रखता है।" },
+        { w: "Strength", h: "ताकत / खूबी", p: "स्ट्रेंथ", c: "job", e: "My biggest strength is problem solving.", eh: "मेरी सबसे बड़ी खूबी समस्या समाधान करना है।" },
+        { w: "Weakness", h: "कमजोरी", p: "वीकनेस", c: "job", e: "I am actively working to overcome my weakness.", eh: "मैं अपनी कमजोरी को दूर करने के लिए लगातार काम कर रहा हूँ।" },
+        { w: "Opportunity", h: "अवसर / सुनहरा मौका", p: "अपॉर्चुनिटी", c: "job", e: "This internship is a fantastic opportunity for growth.", eh: "यह इंटर्नशिप आगे बढ़ने का एक शानदार मौका है।" },
+        { w: "Responsibility", h: "जिम्मेदारी", p: "रिस्पॉन्सिबिलिटी", c: "job", e: "I take full responsibility for my tasks.", eh: "मैं अपने सभी कामों की पूरी जिम्मेदारी लेता हूँ।" },
+        { w: "Career", h: "करियर / भविष्य", p: "करियर", c: "job", e: "I want to build a long-term career in software engineering.", eh: "मैं सॉफ्टवेयर इंजीनियरिंग में एक लंबा करियर बनाना चाहता हूँ।" },
+        { w: "Teamwork", h: "टीम के साथ मिलकर काम करना", p: "टीमवर्क", c: "job", e: "Effective teamwork leads to great results.", eh: "अच्छा टीमवर्क बेहतरीन नतीजे देता है।" },
+        { w: "Professional", h: "पेशेवर", p: "प्रोफेशनल", c: "job", e: "Always maintain a polite and professional attitude.", eh: "हमेशा विनम्र और पेशेवर रवैया बनाए रखें।" },
+        { w: "Skill", h: "कौशल / हुनर", p: "स्किल", c: "job", e: "Good communication is the most important skill.", eh: "अच्छी बातचीत सबसे महत्वपूर्ण कौशल है।" },
+        { w: "Goal", h: "लक्ष्य", p: "गोल", c: "job", e: "My immediate goal is to get placed in a good company.", eh: "मेरा पहला लक्ष्य एक अच्छी कंपनी में प्लेसमेंट पाना है।" },
+        { w: "Achieve", h: "हासिल करना", p: "अचीव", c: "job", e: "Consistent effort will help you achieve your goals.", eh: "लगातार प्रयास आपको अपने लक्ष्य हासिल करने में मदद करेगा।" },
+        { w: "Challenge", h: "चुनौती", p: "चैलेंज", c: "job", e: "I am always ready to accept new challenges.", eh: "मैं हमेशा नई चुनौतियों को स्वीकार करने के लिए तैयार रहता हूँ।" },
+
+        // Smart Conversation Phrases
+        { w: "Actually", h: "असल में / वास्तव में", p: "एक्चुअली", c: "phrases", e: "Actually, I have already solved this problem.", eh: "असल में, मैंने यह सवाल पहले ही हल कर लिया है।" },
+        { w: "Honestly", h: "सच कहूँ तो", p: "ऑनेस्टली", c: "phrases", e: "Honestly, I did not know about this rule.", eh: "सच कहूँ तो, मुझे इस नियम के बारे में पता नहीं था।" },
+        { w: "By the way", h: "वैसे / बातों-बातों में", p: "बाय द वे", c: "phrases", e: "By the way, where did you buy this laptop?", eh: "वैसे, तुमने यह लैपटॉप कहाँ से खरीदा?" },
+        { w: "In my opinion", h: "मेरी राय में", p: "इन माय ओपिनियन", c: "phrases", e: "In my opinion, this method is much simpler.", eh: "मेरी राय में, यह तरीका काफी आसान है।" },
+        { w: "Exactly", h: "बिल्कुल सही", p: "एग्जैक्टली", c: "phrases", e: "That is exactly what I was trying to explain.", eh: "बिल्कुल वही जो मैं समझाने की कोशिश कर रहा था।" },
+        { w: "As soon as possible", h: "जितनी जल्दी हो सके", p: "ऐज़ सून ऐज़ पॉसिबल", c: "phrases", e: "Please email the document as soon as possible.", eh: "कृपया जितनी जल्दी हो सके दस्तावेज़ ईमेल कर दें।" },
+        { w: "No problem", h: "कोई बात नहीं", p: "नो प्रॉब्लम", c: "phrases", e: "Thanks for waiting! — No problem at all.", eh: "इंतजार के लिए धन्यवाद! — कोई बात नहीं।" },
+        { w: "I appreciate it", h: "मैं इसकी कद्र करता हूँ / बहुत शुक्रिया", p: "आई एप्रिशिएट इट", c: "phrases", e: "Thank you for the guidance, I truly appreciate it.", eh: "मार्गदर्शन के लिए धन्यवाद, मैं इसकी बहुत कद्र करता हूँ।" },
+        { w: "Sounds good", h: "सुनने में अच्छा लग रहा है / ठीक है", p: "साउंड्स गुड", c: "phrases", e: "Shall we meet at five PM? Sounds good!", eh: "क्या हम शाम 5 बजे मिलें? बिल्कुल ठीक रहेगा!" },
+        { w: "Never mind", h: "छोड़ो / कोई बात नहीं", p: "नेवर माइंड", c: "phrases", e: "Never mind, I will figure it out myself.", eh: "छोड़ो कोई बात नहीं, मैं खुद पता लगा लूँगा।" },
+        { w: "Let me know", h: "मुझे बता देना", p: "लेट मी नो", c: "phrases", e: "Let me know if you need any assistance.", eh: "अगर तुम्हें किसी मदद की ज़रूरत हो तो मुझे बता देना।" },
+        { w: "Take your time", h: "आराम से करो / कोई जल्दी नहीं", p: "टेक योर टाइम", c: "phrases", e: "Take your time, there is no hurry.", eh: "आराम से समय लो, कोई जल्दबाज़ी नहीं है।" },
+        { w: "Of course", h: "बेशक / ज़रूर", p: "ऑफ़ कोर्स", c: "phrases", e: "Of course, you can borrow my book.", eh: "बेशक, तुम मेरी किताब ले सकते हो।" },
+        { w: "Guess what", h: "अंदाज़ा लगाओ क्या हुआ", p: "गेस व्हॉट", c: "phrases", e: "Guess what! I cracked the coding contest!", eh: "अंदाज़ा लगाओ! मैंने कोडिंग प्रतियोगिता जीत ली!" },
+
+        // Feelings & Emotions
+        { w: "Nervous", h: "घबराया हुआ / बेचैन", p: "नर्वस", c: "emotions", e: "Everyone feels nervous before their first speech.", eh: "हर कोई अपने पहले भाषण से पहले थोड़ा घबराता है।" },
+        { w: "Excited", h: "उत्साहित / रोमांचित", p: "एक्साइटेड", c: "emotions", e: "I am super excited to start my new project.", eh: "मैं अपना नया प्रोजेक्ट शुरू करने के लिए बहुत उत्साहित हूँ।" },
+        { w: "Grateful", h: "आभारी / शुक्रगुजार", p: "ग्रेटफुल", c: "emotions", e: "I am deeply grateful for your continuous help.", eh: "मैं आपकी लगातार मदद के लिए दिल से आभारी हूँ।" },
+        { w: "Frustrated", h: "परेशान / खीझा हुआ", p: "फ्रस्ट्रेटेड", c: "emotions", e: "Do not get frustrated when code shows errors.", eh: "जब कोड में गलतियाँ आएं तो परेशान मत हो।" },
+        { w: "Relieved", h: "राहत महसूस करना", p: "रिलीव्ड", c: "emotions", e: "I felt relieved once the viva was over.", eh: "वाइवा खत्म होने पर मुझे बहुत राहत महसूस हुई।" },
+        { w: "Curious", h: "जिज्ञासु / जानने का इच्छुक", p: "क्यूरियस", c: "emotions", e: "Curious minds always learn faster.", eh: "जिज्ञासु लोग हमेशा जल्दी सीखते हैं।" },
+        { w: "Impressed", h: "प्रभावित", p: "इम्प्रेस्ड", c: "emotions", e: "The interviewer was impressed with my confidence.", eh: "इंटरव्यू लेने वाले मेरे आत्मविश्वास से प्रभावित हुए।" },
+        { w: "Disappointed", h: "निराश", p: "डिसअपॉइंटेड", c: "emotions", e: "Never feel disappointed by a temporary setback.", eh: "अस्थायी असफलता से कभी निराश न हों।" },
+        { w: "Anxious", h: "चिंतित", p: "एंग्शस", c: "emotions", e: "I felt anxious waiting for the exam results.", eh: "परीक्षा के नतीजों का इंतज़ार करते समय मुझे चिंता महसूस हुई।" },
+        { w: "Energetic", h: "ऊर्जावान / जोश से भरा", p: "एनर्जेटिक", c: "emotions", e: "A morning walk keeps me energetic all day.", eh: "सुबह की सैर मुझे पूरे दिन ऊर्जावान रखती है।" },
+
+        // Travel, Food & Shopping
+        { w: "Delicious", h: "स्वादिष्ट / लजीज", p: "डिलिशियस", c: "travel", e: "The food at the college canteen is delicious today.", eh: "आज कॉलेज कैंटीन का खाना बहुत स्वादिष्ट है।" },
+        { w: "Order", h: "ऑर्डर देना / मंगाना", p: "ऑर्डर", c: "travel", e: "Are you ready to order your meal?", eh: "क्या आप अपना खाना ऑर्डर करने के लिए तैयार हैं?" },
+        { w: "Bill", h: "बिल / हिसाब", p: "बिल", c: "travel", e: "Excuse me, could we please get the bill?", eh: "सुनिए, क्या हमें बिल मिल सकता है?" },
+        { w: "Recommend", h: "सिफारिश करना / सुझाव देना", p: "रेकमेंड", c: "travel", e: "Can you recommend a good book to learn speaking?", eh: "क्या आप बोलना सीखने के लिए कोई अच्छी किताब सुझा सकते हैं?" },
+        { w: "Bargain", h: "मोलभाव करना", p: "बार्गेन", c: "travel", e: "She knows how to bargain in local markets.", eh: "उसे स्थानीय बाज़ारों में मोलभाव करना अच्छे से आता है।" },
+        { w: "Discount", h: "छूट", p: "डिस्काउंट", c: "travel", e: "Do you offer any special student discount?", eh: "क्या आप कोई विशेष छात्र छूट देते हैं?" },
+        { w: "Direction", h: "दिशा / रास्ता", p: "डायरेक्शन", c: "travel", e: "Can you show me the direction to the library?", eh: "क्या आप लाइब्रेरी जाने का रास्ता बता सकते हैं?" },
+        { w: "Destination", h: "मंजिल / गंतव्य", p: "डेस्टिनेशन", c: "travel", e: "We will reach our destination in ten minutes.", eh: "हम दस मिनट में अपनी मंजिल पर पहुँच जाएंगे।" },
+        { w: "Reserve", h: "आरक्षित करना / बुक करना", p: "रिज़र्व", c: "travel", e: "I want to reserve a table for two people.", eh: "मैं दो लोगों के लिए एक टेबल बुक करना चाहता हूँ।" },
+        { w: "Receipt", h: "रसीद", p: "रिसीट", c: "travel", e: "Please save your fee receipt safely.", eh: "कृपया अपनी फीस की रसीद संभाल कर रखें।" },
+
+        // Popular English Idioms
+        { w: "Piece of cake", h: "बहुत आसान काम (बच्चों का खेल)", p: "पीस ऑफ़ केक", c: "idioms", e: "This English speaking drill is a piece of cake.", eh: "यह अंग्रेज़ी स्पीकिंग ड्रिल बहुत आसान काम है।" },
+        { w: "Break a leg", h: "शुभकामनाएं / बेस्ट ऑफ लक", p: "ब्रेक अ लेग", c: "idioms", e: "Break a leg for your stage presentation today!", eh: "आज अपनी स्टेज प्रेजेंटेशन के लिए बहुत-बहुत शुभकामनाएं!" },
+        { w: "Once in a blue moon", h: "कभी-कभार / ईद का चाँद", p: "वन्स इन अ ब्लू मून", c: "idioms", e: "He eats outside food once in a blue moon.", eh: "वह बाहर का खाना कभी-कभार ही खाता है।" },
+        { w: "Under the weather", h: "तबीयत थोड़ी नासाज होना", p: "अंडर द वेदर", c: "idioms", e: "I am feeling a bit under the weather today.", eh: "आज मेरी तबीयत थोड़ी ठीक नहीं लग रही है।" },
+        { w: "Cost an arm and a leg", h: "बहुत ज्यादा महंगा होना", p: "कॉस्ट एन आर्म एंड अ लेग", c: "idioms", e: "That luxury phone costs an arm and a leg.", eh: "वह महंगा फोन जेब खाली कर देता है।" },
+        { w: "Hit the books", h: "पूरी लगन से पढ़ाई में जुटना", p: "हिट द बुक्स", c: "idioms", e: "Exams start next week, time to hit the books!", eh: "अगले हफ्ते से परीक्षाएं हैं, अब जमकर पढ़ने का समय है!" },
+        { w: "Bite the bullet", h: "हिम्मत करके मुश्किल काम करना", p: "बाइट द बुलेट", c: "idioms", e: "You must bite the bullet and speak up in class.", eh: "तुम्हें हिम्मत करके कक्षा में बोलना ही होगा।" },
+        { w: "Burn the midnight oil", h: "देर रात तक कड़ी मेहनत करना", p: "बर्न द मिडनाइट ऑयल", c: "idioms", e: "He burned the midnight oil to ace the exam.", eh: "उसने परीक्षा में अव्वल आने के लिए रात-दिन एक कर दिया।" },
+        { w: "Spill the beans", h: "राज़ खोल देना", p: "स्पिल द बीन्स", c: "idioms", e: "Don't spill the beans about the surprise party.", eh: "सरप्राइज पार्टी के बारे में किसी को राज़ मत बताना।" },
+        { w: "Call it a day", h: "आज का काम यहीं समाप्त करना", p: "कॉल इट अ डे", c: "idioms", e: "We have practiced enough, let's call it a day.", eh: "हमने पर्याप्त अभ्यास कर लिया है, चलो आज का काम यहीं रोकते हैं।" }
+      ];
+
+      // Maintain backward compatibility for VOC
+      const VOC = VOC_BOOK.slice(0, 15).map(x => [x.w, x.h, x.e]);
+
+      // Reading Stories for Speaking Practice
+      const STORIES = [
+        {
+          id: "speech",
+          title: "The First Speech (रोहन का पहला भाषण)",
+          desc: "How a shy student overcame stage fear by practicing daily.",
+          lines: [
+            { en: "Rohan was always nervous when speaking English in front of others.", hi: "रोहन दूसरों के सामने अंग्रेज़ी बोलने में हमेशा घबराता था।" },
+            { en: "Whenever the teacher asked a question, his heart started beating fast.", hi: "जब भी शिक्षक कोई सवाल पूछते, उसका दिल तेज़ी से धड़कने लगता था।" },
+            { en: "One day, he decided to stop running away from his fear.", hi: "एक दिन, उसने अपने डर से भागना बंद करने का फैसला किया।" },
+            { en: "He started speaking five English sentences aloud every single day.", hi: "उसने हर दिन पाँच अंग्रेज़ी वाक्य ज़ोर से बोलना शुरू किया।" },
+            { en: "Within one month, he spoke on stage with pure confidence.", hi: "एक महीने के भीतर, उसने पूरे आत्मविश्वास के साथ मंच पर भाषण दिया।" },
+            { en: "Small daily steps create massive transformations.", hi: "छोटे दैनिक कदम बहुत बड़ा बदलाव लाते हैं।" }
+          ]
+        },
+        {
+          id: "cafe",
+          title: "Ordering at a Cafe (कैफे में बातचीत)",
+          desc: "A polite real-world dialogue between a customer and a waiter.",
+          lines: [
+            { en: "Good afternoon! Welcome to the city cafe.", hi: "नमस्ते! सिटी कैफे में आपका स्वागत है।" },
+            { en: "Could I please get a hot cup of black coffee?", hi: "क्या मुझे एक कप गर्म ब्लैक कॉफी मिल सकती है?" },
+            { en: "Sure! Would you like sugar or cookies with that?", hi: "ज़रूर! क्या आप इसके साथ चीनी या कुकीज़ लेना पसंद करेंगे?" },
+            { en: "Just a little sugar, please. Thank you very much.", hi: "बस थोड़ी सी चीनी, कृपया। आपका बहुत-बहुत धन्यवाद।" },
+            { en: "Your order will be served in just five minutes.", hi: "आपका ऑर्डर बस पाँच मिनट में आ जाएगा।" },
+            { en: "I really appreciate your kind and quick service.", hi: "मैं आपकी विनम्र और तेज़ सेवा की वास्तव में कद्र करता हूँ।" }
+          ]
+        },
+        {
+          id: "travel",
+          title: "The Train Journey (ट्रेन का सफर)",
+          desc: "Making a new friend during an Indian Railways journey.",
+          lines: [
+            { en: "Aman boarded the train from Delhi to Jaipur on a sunny morning.", hi: "अमन ने एक धूप वाली सुबह दिल्ली से जयपुर जाने वाली ट्रेन पकड़ी।" },
+            { en: "A friendly tourist was sitting right beside him.", hi: "एक मिलनसार पर्यटक ठीक उसके बगल में बैठा था।" },
+            { en: "Aman smiled and asked: 'Is this your first visit to Rajasthan?'", hi: "अमन मुस्कुराया और पूछा: 'क्या यह आपकी राजस्थान की पहली यात्रा है?'" },
+            { en: "The tourist replied happily: 'Yes, I am very excited to see the palaces!'", hi: "पर्यटक ने खुशी से जवाब दिया: 'हाँ, मैं महलों को देखने के लिए बहुत उत्साहित हूँ!'" },
+            { en: "They talked about culture, food, and history throughout the journey.", hi: "उन्होंने पूरे सफर के दौरान संस्कृति, भोजन और इतिहास के बारे में बातचीत की।" },
+            { en: "A simple hello can open doors to wonderful friendships.", hi: "एक छोटी सी 'नमस्ते' खूबसूरत दोस्ती के दरवाज़े खोल सकती है।" }
+          ]
+        }
+      ];
+
+      const PAT = [
+        [
+          "I am + ___",
+          "Main ___ hoon",
+          [
+            "I am a student.",
+            "I am tired.",
+            "I am hungry.",
+            "I am ready.",
+            "I am learning English.",
+          ],
+        ],
+        [
+          "I am going to + ___",
+          "Main ___ karne wala hoon",
+          [
+            "I am going to college.",
+            "I am going to study.",
+            "I am going to meet my friend.",
+          ],
+        ],
+        [
+          "I like + ___",
+          "Mujhe ___ pasand hai",
+          ["I like coding.", "I like cricket.", "I like music."],
+        ],
+      ];
+      const GRAM = [
+        [
+          "I am go college.",
+          "I am going to college.",
+          "“go” अकेले नहीं आएगा. am + going use करो.",
+        ],
+        ["He have a bike.", "He has a bike.", "He/She/It के साथ have → has."],
+      ];
+      const PRON = [
+        "comfortable",
+        "interview",
+        "developer",
+        "project",
+        "engineer",
+        "presentation",
+        "strength",
+        "weakness",
+      ];
+      const SC = {
+        free: [
+          "Friendly college friend",
+          "a friendly first-year college student meeting the learner for the first time",
+        ],
+        class: [
+          "Talk to a classmate",
+          "a classmate chatting about assignments and exams",
+        ],
+        prof: ["Talk to a teacher", "a polite professor; learner asks doubts"],
+        hostel: [
+          "Hostel / PG",
+          "a hostel roommate; topics: food, rent, warden",
+        ],
+        shop: [
+          "Shop / Restaurant",
+          "a shopkeeper or waiter; learner shops or orders food",
+        ],
+        phone: ["Phone call", "a person on a phone call with the learner"],
+        pres: [
+          "Presentation Q&A",
+          "an audience member asking questions after the learner's project presentation",
+        ],
+        hr: [
+          "HR Interview",
+          "a friendly but professional HR interviewer for a B.Tech fresher; ask: tell me about yourself, why CSE, strengths, weaknesses, project, future goals — one question at a time",
+        ],
+      };
+      const CH = (d) =>
+        d <= 4
+          ? "Introduce yourself for 30 seconds."
+          : d <= 9
+            ? "Talk about your college for 1 minute."
+            : d <= 14
+              ? "Talk about your daily routine for 1 minute."
+              : d <= 19
+                ? "Explain your favorite technology for 1 minute."
+                : d <= 24
+                  ? "Give a short group-discussion opinion (1 min)."
+                  : d <= 29
+                    ? "Explain your project like a presentation (2 min)."
+                    : "Give a 2-minute self-introduction.";
+      const JOURNEY = {
+        1: "Basic introduction",
+        5: "Daily routine",
+        10: "College conversation",
+        15: "1-minute speaking",
+        20: "Group discussion",
+        25: "Presentation",
+        30: "Mock interview",
+      };
+      const LV = [
+        "Absolute Beginner",
+        "Basic English",
+        "College English",
+        "Confident Conversation",
+        "Presentation English",
+        "Interview English",
+      ];
+
+      // ---------- speech system ----------
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let rec = null,
+        isListening = false;
+
+      function speak(t, rate = 1, onEnd = null) {
+        try {
+          speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(t);
+          u.lang = "en-IN";
+          u.rate = rate;
+
+          if (onEnd) {
+            let called = false;
+            const finish = () => {
+              if (!called) {
+                called = true;
+                onEnd();
+              }
+            };
+            u.onend = finish;
+            u.onerror = finish;
+            const approxMs = Math.max(1800, (t.split(" ").length / 2) * 1000 + 1200);
+            setTimeout(finish, approxMs);
+          }
+
+          speechSynthesis.speak(u);
+        } catch (e) {
+          if (onEnd) onEnd();
+        }
+      }
+
+      function stopListening() {
+        if (rec) {
+          try {
+            rec.stop();
+          } catch (e) {
+            try { rec.abort(); } catch (e2) {}
+          }
+          rec = null;
+        }
+        isListening = false;
+      }
+
+      function listen(onres, onstate) {
+        if (!SR) {
+          onstate("nosr");
+          return;
+        }
+
+        if (isListening) {
+          stopListening();
+          onstate("end");
+          return;
+        }
+
+        stopListening();
+
+        try {
+          rec = new SR();
+          rec.lang = "en-IN";
+          rec.interimResults = false;
+          rec.maxAlternatives = 1;
+          const t0 = Date.now();
+          isListening = true;
+          onstate("rec");
+
+          rec.onresult = (e) => {
+            isListening = false;
+            rec = null;
+            if (e.results && e.results[0] && e.results[0][0]) {
+              const tx = e.results[0][0].transcript;
+              S.secs += Math.max(1, Math.round((Date.now() - t0) / 1000));
+              save();
+              onres(tx);
+            }
+          };
+
+          let er = 0;
+          rec.onerror = (e) => {
+            er = 1;
+            isListening = false;
+            rec = null;
+            const code = (e && e.error) || "";
+            onstate("err:" + code);
+
+            if (window.location.protocol === "file:" && (code === "network" || code === "not-allowed")) {
+              showMicFileNotice();
+            }
+          };
+
+          rec.onend = () => {
+            isListening = false;
+            rec = null;
+            if (!er) onstate("end");
+          };
+
+          rec.start();
+        } catch (e) {
+          isListening = false;
+          rec = null;
+          onstate("err:start_failed");
+          if (window.location.protocol === "file:") {
+            showMicFileNotice();
+          }
+        }
+      }
+
+      function stMsg(s) {
+        if (s === "rec") return "🔴 Listening... Bolna shuru karein!";
+        if (s === "nosr")
+          return "Mic yahan supported nahi. Neeche box mein keyboard ke 🎤 se bolein.";
+        if (s.startsWith("err")) {
+          const c = s.slice(4);
+          if (window.location.protocol === "file:") {
+            if (c === "network" || c === "not-allowed") {
+              return "⚠️ Local file par Chrome mic block karta hai. 'Run-Bolo.bat' se kholein ya [Win+H] se bolein.";
+            }
+          }
+          if (c === "not-allowed" || c === "service-not-allowed") {
+            return "Mic permission blocked hai. URL bar mein 🔒/tune icon par click karke Mic Allow karein.";
+          }
+          if (c === "network") {
+            return "Google Speech Server issue. Internet check karein ya 'Run-Bolo.bat' chalayein.";
+          }
+          if (c === "audio-capture") {
+            return "Microphone nahi mila. Device ka mic on/connect karein.";
+          }
+          if (c === "no-speech") {
+            return "Kuch sunai nahi diya. Phir se mic dabakar thoda saaf bolein 🙂";
+          }
+          if (c === "aborted") {
+            return "Mic band hua. Dobara bolne ke liye tap karein.";
+          }
+          return "Mic error. 'Run-Bolo.bat' se chalayein ya keyboard mic se bolein.";
+        }
+        return "Tap & Speak";
+      }
+
+      // Mic Help & Diagnostic Modals
+      function showMicFileNotice() {
+        showModal(`
+          <div style="text-align:center">
+            <div style="font-size:48px">🎤⚠️</div>
+            <h2>Mic Permission / Local File Notice</h2>
+            <p style="text-align:left">Chrome browser security reasons ki wajah se direct file (<b>file://</b>) par Google Speech Recognition block kar deta hai.</p>
+            <div class="card" style="text-align:left;background:var(--pr2)">
+              <p><b>✅ 1-Minute Permanent Fix:</b></p>
+              <p>1. Is folder mein <b>Run-Bolo.bat</b> file banayi gayi hai.</p>
+              <p>2. Bas <b>Run-Bolo.bat</b> par double click karein!</p>
+              <p>3. Ye Chrome ko <code>http://localhost:8000</code> par kholega jahan mic <b>100% chalega</b>!</p>
+            </div>
+            <div class="card" style="text-align:left">
+              <p><b>⚡ Quick Alternative:</b></p>
+              <p>Neeche diye gaye box par click karein aur keyboard par <b>Win + H</b> dabakar bolen.</p>
+            </div>
+            <button style="width:100%" onclick="closeModal()">Samajh gaya (OK)</button>
+          </div>
+        `);
+      }
+
+      function showMicHelp() {
+        showModal(`
+          <div>
+            <h2>🎤 Mic Diagnostic & Solutions</h2>
+            <p class="mu">Chrome ya Edge mein mic chalu karne ke aasan tareeqe:</p>
+            
+            <div class="card">
+              <p><b>1. Local Server se Kholein (Best)</b></p>
+              <p class="mu">Folder mein <b>Run-Bolo.bat</b> par double-click karein. Ye localhost par server shuru karke Chrome khol deta hai jisme mic full support ke saath chalta hai.</p>
+            </div>
+
+            <div class="card">
+              <p><b>2. Chrome Mic Permission Allow Karein</b></p>
+              <p class="mu">Chrome ke address bar (URL bar) mein left side <b>🔒 (Lock)</b> ya <b>Tune Icon</b> par click karein → <b>Microphone: Allow</b> par set karein.</p>
+            </div>
+
+            <div class="card">
+              <p><b>3. Windows Voice Dictation (Win + H)</b></p>
+              <p class="mu">Kisi bhi text box par click karke keyboard par <b>Windows Key + H</b> dabayein. Windows ka built-in speech mic khul jayega aur aap bol kar type kar sakte hain.</p>
+            </div>
+
+            <div class="card">
+              <p><b>4. Test Mic Now</b></p>
+              <button class="s" style="width:100%" onclick="testMicDiagnostics()">🔍 Run Mic Diagnostic Test</button>
+              <p id="mic-diag-res" style="margin-top:8px;font-size:14px"></p>
+            </div>
+
+            <button style="width:100%;margin-top:10px" onclick="closeModal()">Close</button>
+          </div>
+        `);
+      }
+
+      async function testMicDiagnostics() {
+        const out = $("#mic-diag-res");
+        if (!out) return;
+        out.innerHTML = "Testing system...";
+        let msg = [];
+
+        if (SR) msg.push("✅ Web Speech API: Supported in your browser");
+        else msg.push("❌ Web Speech API: Not supported (Use Chrome/Edge)");
+
+        if (window.location.protocol === "file:") {
+          msg.push("⚠️ URL: Running on <b>file://</b>. Direct files have cloud speech restrictions. Run via <b>Run-Bolo.bat</b> for full functionality.");
+        } else {
+          msg.push("✅ URL: Running on <b>" + window.location.protocol + "//" + window.location.host + "</b> (Secure context)");
+        }
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(t => t.stop());
+            msg.push("✅ Hardware Mic: Connected & permission granted!");
+          } catch (e) {
+            msg.push("⚠️ Hardware Mic permission: " + e.message);
+          }
+        }
+
+        out.innerHTML = msg.join("<br><br>");
+      }
+
+      function showModal(html) {
+        const root = $("#modal-root");
+        root.innerHTML = `<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
+      }
+      function closeModal() {
+        $("#modal-root").innerHTML = "";
+      }
+      window.showMicHelp = showMicHelp;
+      window.closeModal = closeModal;
+      window.testMicDiagnostics = testMicDiagnostics;
+
+      const norm = (s) =>
+        String(s)
+          .toLowerCase()
+          .replace(/[^a-z0-9' ]/g, "")
+          .split(/\s+/)
+          .filter(Boolean);
+      function sim(a, b) {
+        const x = norm(a),
+          y = norm(b);
+        if (!y.length) return 0;
+        let h = 0;
+        y.forEach((w) => {
+          if (x.includes(w)) h++;
+        });
+        return h / y.length;
+      }
+      function addMist(w, r, tip) {
+        if (!S.mist.find((m) => m.w === w)) {
+          S.mist.unshift({ w, r, tip: tip || "" });
+          S.mist = S.mist.slice(0, 50);
+        }
+        save();
+      }
+
+      // ---------- UI helpers & routing ----------
+      let view = "home";
+      function go(v, a) {
+        if (v !== "live" && liveCall.active) {
+          endLiveCall(false);
+        }
+        stopListening();
+        view = v;
+        if (R[v]) R[v](a);
+        window.scrollTo(0, 0);
+        nav();
+        checkProtocolBanner();
+      }
+      function nav() {
+        const t = [
+          ["home", "🏠", "Home"],
+          ["live", "📞", "Live Call"],
+          ["vocab", "📖", "Vocab"],
+          ["chat", "💬", "Chat"],
+          ["prog", "📈", "Progress"],
+          ["set", "⚙️", "Settings"],
+        ];
+        $("#nav").style.display = S.level < 0 ? "none" : "flex";
+        $("#nav").innerHTML = t
+          .map(
+            (x) =>
+              `<button class="${view === x[0] ? "on" : ""}" onclick="go('${x[0]}')"><div style="font-size:22px">${x[1]}</div>${x[2]}</button>`,
+          )
+          .join("");
+      }
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      window.go = go;
+      window.speak = speak;
+
+      // ---------- LIVE VOICE CALL BOT (HANDS-FREE AI VOICE MODE) ----------
+      const VOICE_BOTS = {
+        riya: {
+          id: "riya",
+          name: "Riya",
+          role: "College Friend & Study Partner",
+          avatar: "👩‍🎓",
+          themeColor: "#8b5cf6",
+          voiceRate: 1,
+          desc: "Casual, friendly baat-cheet. College life, hobbies, fun & routine.",
+          greeting: (name) => `Hey ${name || "there"}! Great to talk to you. How is your day going? What are you up to today?`,
+          systemPrompt: (name, lv, goal) => `You are Riya, a warm, energetic 2nd-year college friend on a LIVE voice phone call with ${name || "a student"} (English level: ${lv}, goal: ${goal}). Rules: Speak in 1-2 SHORT, conversational, everyday spoken English sentences. Never give long lectures. Ask one easy follow-up question. If they made an English grammar error, provide a single gentle Hinglish tip. Output ONLY JSON: {"reply":"...","correction":{"wrong":"...","right":"...","tip_hi":"..."} or null,"hint_hi":"..."}`
+        },
+        vikram: {
+          id: "vikram",
+          name: "Vikram Sir",
+          role: "HR Interview Coach",
+          avatar: "💼",
+          themeColor: "#2563eb",
+          voiceRate: 0.95,
+          desc: "Professional mock interview. Self-intro, projects, strengths & career.",
+          greeting: (name) => `Hello ${name || "candidate"}. Welcome to your live interview practice call. Let us begin: could you please introduce yourself?`,
+          systemPrompt: (name, lv, goal) => `You are Vikram Sir, an experienced, supportive HR interviewer on a LIVE mock interview call with ${name || "a candidate"} (level: ${lv}, goal: ${goal}). Rules: Keep responses to 1-2 SHORT professional sentences. Ask one interview question at a time (introduction, CSE projects, strengths, weaknesses, teamwork, future goals). If they make a grammar mistake, provide one constructive Hinglish correction. Output ONLY JSON: {"reply":"...","correction":{"wrong":"...","right":"...","tip_hi":"..."} or null,"hint_hi":"..."}`
+        },
+        priya: {
+          id: "priya",
+          name: "Priya Ma'am",
+          role: "Gentle English Teacher",
+          avatar: "👩‍🏫",
+          themeColor: "#12a36a",
+          voiceRate: 0.9,
+          desc: "Patient & encouraging. Hesitation dur karein, simple daily English.",
+          greeting: (name) => `Namaste ${name || "dear"}! I am Priya Ma'am. Do not hesitate at all. Tell me, what did you do this morning?`,
+          systemPrompt: (name, lv, goal) => `You are Priya Ma'am, a very patient, warm, encouraging English speaking teacher on a live voice call with ${name || "a learner"} (level: ${lv}, goal: ${goal}). Rules: Speak in 1-2 clear, simple, encouraging English sentences. Ask one easy question. Gently correct mistakes with a friendly Hinglish explanation. Output ONLY JSON: {"reply":"...","correction":{"wrong":"...","right":"...","tip_hi":"..."} or null,"hint_hi":"..."}`
+        },
+        kabir: {
+          id: "kabir",
+          name: "Kabir",
+          role: "Cafe & Daily Life Guide",
+          avatar: "☕",
+          themeColor: "#f59e0b",
+          voiceRate: 1,
+          desc: "Everyday situations. Ordering food, directions, shopping, travel.",
+          greeting: (name) => `Hey ${name || "friend"}! Welcome to the city cafe. Would you like to order food, coffee, or dessert today?`,
+          systemPrompt: (name, lv, goal) => `You are Kabir, a cheerful cafe barista and daily guide roleplaying real-life situations on a live call with ${name || "a customer"} (level: ${lv}, goal: ${goal}). Rules: 1-2 short conversational sentences. Roleplay ordering, bill, cafe questions, directions. Output ONLY JSON: {"reply":"...","correction":{"wrong":"...","right":"...","tip_hi":"..."} or null,"hint_hi":"..."}`
+        }
+      };
+
+      let liveCall = {
+        active: false,
+        muted: false,
+        partnerId: "riya",
+        state: "idle",
+        timerSecs: 0,
+        timerInt: null,
+        history: [],
+        lastAiReply: "",
+        turnCount: 0,
+        mistakes: [],
+        speed: 1,
+        showCaptions: true,
+        currentSpeech: ""
+      };
+
+      R.live = (pId) => {
+        if (pId && VOICE_BOTS[pId]) {
+          liveCall.partnerId = pId;
+        }
+
+        if (liveCall.active) {
+          renderLiveCallUI();
+        } else {
+          renderLiveSetupUI();
+        }
+      };
+
+      function renderLiveSetupUI() {
+        const bot = VOICE_BOTS[liveCall.partnerId] || VOICE_BOTS.riya;
+
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>Live Voice Bot 📞</h1>
+            <span class="badge" style="background:var(--pr);color:#fff">✨ Gemini Live</span>
+          </div>
+          <p class="mu">Hands-free voice mode — direct bolkar baat karein jaise real phone call par!</p>
+
+          <h3 style="margin:16px 0 8px">Select Your AI Partner:</h3>
+          ${Object.values(VOICE_BOTS)
+            .map(
+              (b) => `
+                <div class="partner-card ${b.id === liveCall.partnerId ? 'selected' : ''}" onclick="liveCall.partnerId='${b.id}';renderLiveSetupUI()">
+                  <div style="font-size:38px">${b.avatar}</div>
+                  <div style="flex:1">
+                    <div style="display:flex;justify-content:space-between">
+                      <b>${esc(b.name)}</b>
+                      <span class="badge" style="font-size:10px">${b.id === liveCall.partnerId ? '✓ Selected' : 'Choose'}</span>
+                    </div>
+                    <p style="margin:2px 0;font-size:13px;font-weight:600;color:var(--pr)">${esc(b.role)}</p>
+                    <p class="mu" style="margin:0;font-size:12px">${esc(b.desc)}</p>
+                  </div>
+                </div>
+              `
+            )
+            .join("")}
+
+          <div class="card" style="margin-top:16px">
+            <p><b>Voice Speaking Speed</b></p>
+            <div class="row">
+              <button class="${liveCall.speed === 1 ? '' : 's'}" onclick="liveCall.speed=1;renderLiveSetupUI()">Normal (1.0x)</button>
+              <button class="${liveCall.speed < 1 ? '' : 's'}" onclick="liveCall.speed=0.8;renderLiveSetupUI()">Slow (0.8x 🐢)</button>
+            </div>
+          </div>
+
+          <button style="width:100%;padding:16px;border-radius:20px;font-size:17px;background:var(--ok);margin-top:12px;box-shadow:0 6px 20px rgba(18,163,106,0.35)" onclick="startLiveCall()">
+            🟢 Start Live Call with ${esc(bot.name)}
+          </button>
+          <p class="mu" style="text-align:center;font-size:12.5px;margin-top:8px">💡 Call shuru hote hi AI aapse baat karega aur mic auto-listen karega.</p>
+        `;
+      }
+
+      function renderLiveCallUI() {
+        const bot = VOICE_BOTS[liveCall.partnerId] || VOICE_BOTS.riya;
+        const mins = String(Math.floor(liveCall.timerSecs / 60)).padStart(2, "0");
+        const secs = String(liveCall.timerSecs % 60).padStart(2, "0");
+
+        let orbClass = "voice-orb";
+        let statusText = "Ready";
+
+        if (liveCall.muted) {
+          orbClass += " paused";
+          statusText = "⏸️ Call Paused";
+        } else if (liveCall.state === "listening") {
+          orbClass += " listening";
+          statusText = "🔴 Listening to you... Speak now!";
+        } else if (liveCall.state === "speaking") {
+          orbClass += " speaking";
+          statusText = `🔊 ${bot.name} is speaking...`;
+        } else if (liveCall.state === "thinking") {
+          orbClass += " thinking";
+          statusText = "✨ Gemini is thinking...";
+        }
+
+        const recentCorrection = liveCall.mistakes[liveCall.mistakes.length - 1];
+
+        A.innerHTML = `
+          <div class="voice-call-screen">
+            <div style="width:100%">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="badge" style="background:var(--ok);color:#fff">● LIVE CALL</span>
+                <span style="font-weight:700;font-size:15px;color:var(--mu)">⏱️ ${mins}:${secs}</span>
+                <span class="badge" style="cursor:pointer" onclick="toggleLiveCaptions()">${liveCall.showCaptions ? '📝 Hide Text' : '📝 Show Text'}</span>
+              </div>
+              <h2 style="margin:8px 0 2px">${bot.avatar} ${esc(bot.name)}</h2>
+              <p class="mu" style="margin:0;font-size:13px">${esc(bot.role)}</p>
+            </div>
+
+            <div>
+              <div class="voice-orb-container">
+                <div class="${orbClass}" id="call-orb" onclick="handleOrbTap()">
+                  ${liveCall.state === 'speaking' ? '🗣️' : liveCall.state === 'listening' ? '🎤' : liveCall.state === 'thinking' ? '✨' : bot.avatar}
+                </div>
+              </div>
+
+              ${liveCall.state === 'speaking' ? `
+                <div class="wave-bars">
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                </div>
+              ` : ''}
+
+              <p style="font-weight:600;font-size:16px;color:var(--tx);margin:8px 0" id="live-call-status">${statusText}</p>
+              <p class="mu" style="font-size:12px;margin:0">Tap orb to interrupt or speak immediately</p>
+            </div>
+
+            <div style="width:100%">
+              ${recentCorrection && liveCall.showCaptions ? `
+                <div class="fix" style="font-size:13px;text-align:left;margin-bottom:8px">
+                  <b>💡 Tip:</b> ❌ ${esc(recentCorrection.wrong)} → ✅ <b>${esc(recentCorrection.right)}</b>
+                  ${recentCorrection.tip_hi ? `<br><span class="mu">${esc(recentCorrection.tip_hi)}</span>` : ''}
+                </div>
+              ` : ''}
+
+              ${liveCall.showCaptions ? `
+                <div class="call-transcript-box" id="call-transcript">
+                  ${liveCall.history.slice(-4).map(m => `
+                    <p style="margin:4px 0">
+                      <b>${m.r === 'ai' ? bot.name : 'You'}:</b> ${esc(m.t)}
+                    </p>
+                  `).join('')}
+                  ${liveCall.currentSpeech ? `<p style="margin:4px 0;color:var(--pr)"><b>You (speaking):</b> <i>${esc(liveCall.currentSpeech)}</i></p>` : ''}
+                </div>
+              ` : ''}
+
+              <div class="call-ctrl-bar">
+                <button class="call-btn-circle s" onclick="toggleLiveMute()" title="${liveCall.muted ? 'Unmute' : 'Mute'}">
+                  ${liveCall.muted ? '🔇' : '🎙️'}
+                </button>
+                <button class="call-btn-circle end" onclick="endLiveCall(true)" title="End Call">
+                  📞
+                </button>
+                <button class="call-btn-circle s" onclick="repeatLiveAiSpeech()" title="Repeat Last Sentence">
+                  🔄
+                </button>
+                <button class="call-btn-circle s" onclick="toggleLiveSpeed()" title="Speed">
+                  ${liveCall.speed < 1 ? '🐢' : '⚡'}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function updateLiveTimer() {
+        if (!liveCall.active) return;
+        const mins = String(Math.floor(liveCall.timerSecs / 60)).padStart(2, "0");
+        const secs = String(liveCall.timerSecs % 60).padStart(2, "0");
+        const tSpan = $("span[style*='font-weight:700']");
+        if (tSpan) tSpan.textContent = `⏱️ ${mins}:${secs}`;
+      }
+
+      function updateLiveSpeechDisplay() {
+        const box = $("#call-transcript");
+        if (box && liveCall.showCaptions) {
+          const bot = VOICE_BOTS[liveCall.partnerId] || VOICE_BOTS.riya;
+          box.innerHTML = `
+            ${liveCall.history.slice(-4).map(m => `
+              <p style="margin:4px 0">
+                <b>${m.r === 'ai' ? bot.name : 'You'}:</b> ${esc(m.t)}
+              </p>
+            `).join('')}
+            ${liveCall.currentSpeech ? `<p style="margin:4px 0;color:var(--pr)"><b>You (speaking):</b> <i>${esc(liveCall.currentSpeech)}</i></p>` : ''}
+          `;
+          box.scrollTop = box.scrollHeight;
+        }
+      }
+
+      function startLiveCall() {
+        touch();
+        liveCall.active = true;
+        liveCall.muted = false;
+        liveCall.state = "speaking";
+        liveCall.timerSecs = 0;
+        liveCall.turnCount = 0;
+        liveCall.mistakes = [];
+        liveCall.history = [];
+        liveCall.currentSpeech = "";
+
+        if (liveCall.timerInt) clearInterval(liveCall.timerInt);
+        liveCall.timerInt = setInterval(() => {
+          liveCall.timerSecs++;
+          updateLiveTimer();
+        }, 1000);
+
+        const bot = VOICE_BOTS[liveCall.partnerId] || VOICE_BOTS.riya;
+        const initialGreeting = bot.greeting(S.name);
+        liveCall.lastAiReply = initialGreeting;
+        liveCall.history.push({ r: "ai", t: initialGreeting });
+
+        renderLiveCallUI();
+
+        speak(initialGreeting, liveCall.speed * bot.voiceRate, () => {
+          if (!liveCall.active || liveCall.muted) return;
+          liveCall.state = "listening";
+          renderLiveCallUI();
+          startLiveListening();
+        });
+      }
+
+      function startLiveListening() {
+        if (!liveCall.active || liveCall.muted) return;
+        stopListening();
+
+        try {
+          rec = new SR();
+          rec.lang = "en-IN";
+          rec.interimResults = true;
+          rec.maxAlternatives = 1;
+
+          let finalTx = "";
+          rec.onresult = (e) => {
+            let interim = "";
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              if (e.results[i].isFinal) {
+                finalTx += e.results[i][0].transcript + " ";
+              } else {
+                interim += e.results[i][0].transcript;
+              }
+            }
+            liveCall.currentSpeech = (finalTx + interim).trim();
+            updateLiveSpeechDisplay();
+          };
+
+          rec.onerror = (e) => {
+            const err = (e && e.error) || "";
+            if (!liveCall.active) return;
+            if (err === "no-speech") {
+              setTimeout(() => {
+                if (liveCall.active && liveCall.state === "listening") {
+                  startLiveListening();
+                }
+              }, 350);
+            } else if (err === "network" || err === "not-allowed") {
+              if (window.location.protocol === "file:") {
+                showMicFileNotice();
+              }
+            }
+          };
+
+          rec.onend = () => {
+            rec = null;
+            if (!liveCall.active || liveCall.muted) return;
+            const said = finalTx.trim() || liveCall.currentSpeech.trim();
+            if (said.length > 1) {
+              processLiveUserTurn(said);
+            } else if (liveCall.state === "listening") {
+              setTimeout(() => {
+                if (liveCall.active && liveCall.state === "listening") {
+                  startLiveListening();
+                }
+              }, 300);
+            }
+          };
+
+          rec.start();
+        } catch (e) {
+          if (liveCall.active) {
+            setTimeout(startLiveListening, 500);
+          }
+        }
+      }
+
+      async function processLiveUserTurn(userSaid) {
+        if (!liveCall.active) return;
+        liveCall.currentSpeech = "";
+        liveCall.state = "thinking";
+        renderLiveCallUI();
+
+        S.sent++;
+        S.secs += 4;
+        save();
+
+        const bot = VOICE_BOTS[liveCall.partnerId] || VOICE_BOTS.riya;
+        liveCall.history.push({ r: "user", t: userSaid });
+
+        const prompt =
+          bot.systemPrompt(S.name, LV[Math.min(S.level, 5)], S.goal) +
+          '\n\nLive call conversation history:\n' +
+          liveCall.history.slice(-8).map((m) => (m.r === "ai" ? "AI: " : "Learner: ") + m.t).join("\n") +
+          "\nLearner: " +
+          userSaid;
+
+        let j = null;
+        if (S.aiMode === "gemini" && S.geminiKey) {
+          try {
+            j = await callGeminiApi(prompt);
+          } catch (e) {
+            console.warn("Gemini live error:", e);
+          }
+        }
+
+        if (!j) {
+          await new Promise((r) => setTimeout(r, 350));
+          j = generateLocalAiTurn(userSaid, liveCall.partnerId);
+        }
+
+        if (!liveCall.active) return;
+
+        if (j.correction && j.correction.wrong) {
+          addMist(j.correction.wrong, j.correction.right, j.correction.tip_hi);
+          liveCall.mistakes.push(j.correction);
+        }
+
+        liveCall.lastAiReply = j.reply;
+        liveCall.history.push({
+          r: "ai",
+          t: j.reply,
+          correction: j.correction,
+          hint: j.hint_hi,
+        });
+        liveCall.turnCount++;
+
+        liveCall.state = "speaking";
+        renderLiveCallUI();
+
+        speak(j.reply, liveCall.speed * bot.voiceRate, () => {
+          if (!liveCall.active || liveCall.muted) return;
+          liveCall.state = "listening";
+          renderLiveCallUI();
+          startLiveListening();
+        });
+      }
+
+      function handleOrbTap() {
+        if (!liveCall.active) return;
+        if (liveCall.state === "speaking") {
+          speechSynthesis.cancel();
+          liveCall.state = "listening";
+          renderLiveCallUI();
+          startLiveListening();
+        } else if (liveCall.state === "listening") {
+          stopListening();
+        }
+      }
+
+      function toggleLiveMute() {
+        liveCall.muted = !liveCall.muted;
+        if (liveCall.muted) {
+          stopListening();
+          speechSynthesis.cancel();
+          liveCall.state = "paused";
+        } else {
+          liveCall.state = "listening";
+          startLiveListening();
+        }
+        renderLiveCallUI();
+      }
+
+      function repeatLiveAiSpeech() {
+        if (!liveCall.active || !liveCall.lastAiReply) return;
+        const bot = VOICE_BOTS[liveCall.partnerId] || VOICE_BOTS.riya;
+        stopListening();
+        liveCall.state = "speaking";
+        renderLiveCallUI();
+        speak(liveCall.lastAiReply, liveCall.speed * bot.voiceRate, () => {
+          if (!liveCall.active || liveCall.muted) return;
+          liveCall.state = "listening";
+          renderLiveCallUI();
+          startLiveListening();
+        });
+      }
+
+      function toggleLiveSpeed() {
+        liveCall.speed = liveCall.speed === 1 ? 0.8 : 1;
+        renderLiveCallUI();
+      }
+
+      function toggleLiveCaptions() {
+        liveCall.showCaptions = !liveCall.showCaptions;
+        renderLiveCallUI();
+      }
+
+      function endLiveCall(showSummary = true) {
+        liveCall.active = false;
+        if (liveCall.timerInt) {
+          clearInterval(liveCall.timerInt);
+          liveCall.timerInt = null;
+        }
+        stopListening();
+        speechSynthesis.cancel();
+
+        S.convos++;
+        save();
+
+        if (showSummary) {
+          const mins = String(Math.floor(liveCall.timerSecs / 60)).padStart(2, "0");
+          const secs = String(liveCall.timerSecs % 60).padStart(2, "0");
+          const bot = VOICE_BOTS[liveCall.partnerId] || VOICE_BOTS.riya;
+
+          showModal(`
+            <div style="text-align:center">
+              <div style="font-size:54px">🎉</div>
+              <h2>Great Practice Call!</h2>
+              <p class="mu">Aapne <b>${esc(bot.name)}</b> ke saath English conversation complete ki.</p>
+
+              <div class="card grid" style="margin:14px 0">
+                <div class="stat"><b>${mins}:${secs}</b>Call Duration</div>
+                <div class="stat"><b>${liveCall.turnCount}</b>Turns Spoken</div>
+              </div>
+
+              ${liveCall.mistakes.length ? `
+                <div class="card" style="text-align:left">
+                  <p><b>📝 Corrections to remember:</b></p>
+                  ${liveCall.mistakes.map(m => `
+                    <div style="margin:6px 0;font-size:13.5px">
+                      ❌ ${esc(m.wrong)}<br>
+                      ✅ <b>${esc(m.right)}</b>
+                      ${m.tip_hi ? `<br><span class="mu">${esc(m.tip_hi)}</span>` : ''}
+                    </div>
+                  `).join('<hr style="border:0;border-top:1px solid var(--bd);margin:6px 0">')}
+                </div>
+              ` : '<p style="color:var(--ok)">✅ Impressive! No major grammar errors detected.</p>'}
+
+              <button style="width:100%;margin-top:10px" onclick="closeModal();startLiveCall()">🟢 Call Again</button>
+              <button class="g" style="width:100%;margin-top:6px" onclick="closeModal();go('home')">Go to Home</button>
+            </div>
+          `);
+        }
+        renderLiveSetupUI();
+      }
+
+      window.startLiveCall = startLiveCall;
+      window.endLiveCall = endLiveCall;
+      window.handleOrbTap = handleOrbTap;
+      window.toggleLiveMute = toggleLiveMute;
+      window.repeatLiveAiSpeech = repeatLiveAiSpeech;
+      window.toggleLiveSpeed = toggleLiveSpeed;
+      window.toggleLiveCaptions = toggleLiveCaptions;
+
+      // ---------- ONBOARDING & HOME ----------
+      R.splash = () => {
+        A.innerHTML = `<div style="text-align:center;padding-top:20vh"><div style="font-size:70px">🗣️</div><h1>Bolo</h1><p class="mu">Tumhara personal English-speaking partner</p><br><button onclick="go('onb')">Shuru karein →</button></div>`;
+      };
+      let ob = { step: 0, name: "", lv: -1, goal: "" };
+      R.onb = () => {
+        const L = [
+          ["😶", "I know almost nothing.", 0],
+          ["🙂", "I understand English but cannot speak.", 1],
+          ["😊", "I can speak simple sentences.", 2],
+          ["😎", "I can have basic conversations.", 3],
+          ["🔥", "I can speak but want to become fluent.", 4],
+        ];
+        const G = [
+          "College",
+          "Friends",
+          "Interview",
+          "Job",
+          "Presentation",
+          "Daily conversation",
+          "Confidence",
+        ];
+        if (ob.step === 0)
+          A.innerHTML = `<h1>Welcome! 👋</h1><p class="mu">Mistakes are okay here. Bolne se hi seekhte hain.</p><div class="card"><p>Your name</p><input id="nm" placeholder="e.g. Brajesh" value="${esc(ob.name)}"></div><button style="width:100%" onclick="ob.name=$('#nm').value.trim()||'Student';ob.step=1;R.onb()">Next</button>`;
+        else if (ob.step === 1)
+          A.innerHTML = `<h1>What is your English speaking level?</h1>${L.map((l) => `<button class="opt ${ob.lv === l[2] ? "on" : ""}" onclick="ob.lv=${l[2]};R.onb()">${l[0]} ${l[1]}</button>`).join("")}<button style="width:100%;margin-top:10px" ${ob.lv < 0 ? 'disabled style="width:100%;opacity:.4"' : ""} onclick="ob.step=2;R.onb()">Next</button>`;
+        else
+          A.innerHTML = `<h1>What is your main goal?</h1>${G.map((g) => `<button class="opt ${ob.goal === g ? "on" : ""}" onclick="ob.goal='${g}';R.onb()">${g}</button>`).join("")}<button style="width:100%;margin-top:10px" onclick="if(!ob.goal)return;S.name=ob.name;S.level=ob.lv;S.goal=ob.goal;save();go('plan')">Make my plan</button>`;
+      };
+      window.ob = ob;
+      window.R = R;
+      R.plan = () => {
+        A.innerHTML = `<h1>Your plan is ready, ${esc(S.name)}! 🎯</h1><div class="card"><p><b>Start at:</b> ${LV[Math.min(S.level, 5)]}</p><p><b>Goal:</b> ${esc(S.goal)}</p><p class="mu">Daily 15 min: warm-up → conversation → speaking challenge → repeat corrections.</p><p class="mu">Hindi help will reduce as you improve.</p></div><button style="width:100%" onclick="go('live')">📞 Start Live Voice Call with AI</button><button class="g" style="width:100%" onclick="go('home')">Go to Home</button>`;
+      };
+
+      R.home = () => {
+        touch();
+        const h = new Date().getHours(),
+          g =
+            h < 12
+              ? "Good Morning"
+              : h < 17
+                ? "Good Afternoon"
+                : "Good Evening",
+          m = Math.min(15, Math.round(S.secs / 60)),
+          d = Math.min(30, Object.keys(S.done).length + 1);
+
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>${g}, ${esc(S.name || "Student")}! 👋</h1>
+            <span class="badge" style="background:var(--ok);color:#fff" title="Data is synced to Supabase">☁️ Cloud Synced</span>
+          </div>
+
+          <!-- Prominent Live Voice Call Banner -->
+          <div class="card" style="background:linear-gradient(135deg,rgba(91,91,240,0.12),rgba(144,91,240,0.06));border:1.5px solid var(--pr);padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="text-align:left">
+              <span class="badge" style="background:var(--pr);color:#fff">🔴 LIVE BOT</span>
+              <h3 style="margin:6px 0 2px;font-size:18px">Live Voice Call</h3>
+              <p class="mu" style="margin:0;font-size:13px">Hands-free bolkar baat karein jaise real phone call!</p>
+            </div>
+            <button style="border-radius:24px;padding:12px 18px;white-space:nowrap;font-size:15px;box-shadow:0 4px 15px rgba(91,91,240,0.35)" onclick="go('live')">📞 Call AI</button>
+          </div>
+
+          <div class="card">
+            <h2>Today's Goal</h2>
+            <p>🎯 Speak English for 15 minutes.</p>
+            <div class="bar"><i style="width:${(m / 15) * 100}%"></i></div>
+            <p class="mu">🔥 ${S.streak}-day streak · ${Math.round(S.secs / 60)} min total</p>
+          </div>
+
+          <div class="grid">
+            <button onclick="go('live')">📞<br>Live Voice Bot</button>
+            <button onclick="go('vocab')">📖<br>Vocab Book</button>
+            <button onclick="go('stories')">📚<br>Story Books</button>
+            <button onclick="go('chat','free')">💬<br>AI Conversation</button>
+            <button onclick="go('drill',0)">🎤<br>Warm-up Drill</button>
+            <button onclick="go('prog')">📈<br>My Progress</button>
+          </div>
+
+          <div class="card">
+            <p class="mu">Day ${d} challenge</p>
+            <p><b>${CH(d)}</b></p>
+            <button class="s" style="width:100%;margin-top:8px" onclick="go('chal')">Try Challenge →</button>
+          </div>
+        `;
+      };
+
+      R.learn = () => {
+        A.innerHTML = `<h1>Learn by Speaking</h1>
+          ${[
+            ["live", "Live Voice Call (Hands-Free AI Bot)", "📞"],
+            ["vocab", "Vocabulary Book (120+ Words & Shabdkosh)", "📖"],
+            ["stories", "Reading Stories & Pronunciation", "📚"],
+            ["drill", "Warm-up (5 easy questions)", "🎤", 0],
+            ["sent", "Sentence Builder", "🧱"],
+            ["gram", "Grammar Through Speaking", "🗣️"],
+            ["pron", "Pronunciation Practice", "👄"],
+            ["mist", "Mistake Notebook", "📓"],
+          ]
+            .map(
+              (x) =>
+                `<button class="opt" onclick="go('${x[0]}',${x[3] || 0})">${x[2]} ${x[1]}</button>`,
+            )
+            .join("")}
+          <h2 style="margin-top:18px">Real-life practice (AI)</h2>
+          ${Object.entries(SC)
+            .map(
+              ([k, v]) =>
+                `<button class="opt" onclick="go('chat','${k}')">${v[0]}</button>`,
+            )
+            .join("")}
+          <div class="card" style="margin-top:18px;background:var(--pr2)">
+            <p><b>🎤 Mic Not Working?</b></p>
+            <p class="mu">Chrome direct file par mic block karta hai. Fix guide dekhein.</p>
+            <button class="s" style="width:100%" onclick="showMicHelp()">Open Mic Diagnostic Guide</button>
+          </div>`;
+      };
+
+      // ---------- VOCABULARY BOOK (SHABDKOSH) ----------
+      let vocabFilter = "all";
+      let vocabSearch = "";
+
+      R.vocab = () => {
+        const allList = [...VOC_BOOK, ...S.customWords];
+        const learnedCount = allList.filter((x) => S.words.includes(x.w)).length;
+
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>Vocab Book 📖</h1>
+            <span class="badge">${learnedCount}/${allList.length} Learned</span>
+          </div>
+          <p class="mu">Daily practical English words, Hindi meanings, audio, and speaking practice.</p>
+
+          <div class="row" style="margin:8px 0">
+            <button class="s" style="padding:10px" onclick="openAddWordModal()">➕ Add Word</button>
+            <button class="s" style="padding:10px" onclick="go('vocabQuiz')">🃏 Flashcards Quiz</button>
+            <button class="s" style="padding:10px" onclick="go('stories')">📚 Story Book</button>
+          </div>
+
+          <input id="vsearch" placeholder="🔍 Search word or meaning (e.g. improve, अवसर)..." value="${esc(vocabSearch)}" oninput="vocabSearch=this.value;renderVocabCards()" style="margin:8px 0 10px">
+
+          <div class="pills">
+            <span class="pill ${vocabFilter === 'all' ? 'active' : ''}" onclick="setVocabCat('all')">All (${allList.length})</span>
+            <span class="pill ${vocabFilter === 'daily' ? 'active' : ''}" onclick="setVocabCat('daily')">Daily Life</span>
+            <span class="pill ${vocabFilter === 'college' ? 'active' : ''}" onclick="setVocabCat('college')">College & Study</span>
+            <span class="pill ${vocabFilter === 'job' ? 'active' : ''}" onclick="setVocabCat('job')">Job & Interview</span>
+            <span class="pill ${vocabFilter === 'phrases' ? 'active' : ''}" onclick="setVocabCat('phrases')">Smart Phrases</span>
+            <span class="pill ${vocabFilter === 'emotions' ? 'active' : ''}" onclick="setVocabCat('emotions')">Feelings</span>
+            <span class="pill ${vocabFilter === 'travel' ? 'active' : ''}" onclick="setVocabCat('travel')">Food & Travel</span>
+            <span class="pill ${vocabFilter === 'idioms' ? 'active' : ''}" onclick="setVocabCat('idioms')">Idioms (मुहावरे)</span>
+            <span class="pill ${vocabFilter === 'saved' ? 'active' : ''}" onclick="setVocabCat('saved')">⭐ Learned (${learnedCount})</span>
+            ${S.customWords.length ? `<span class="pill ${vocabFilter === 'custom' ? 'active' : ''}" onclick="setVocabCat('custom')">My Words (${S.customWords.length})</span>` : ''}
+          </div>
+
+          <div id="vocab-cards-list"></div>
+        `;
+        renderVocabCards();
+      };
+
+      function setVocabCat(c) {
+        vocabFilter = c;
+        R.vocab();
+      }
+
+      function renderVocabCards() {
+        const listDiv = $("#vocab-cards-list");
+        if (!listDiv) return;
+
+        const allList = [...VOC_BOOK, ...S.customWords];
+        const filtered = allList.filter((item) => {
+          if (vocabFilter === "saved" && !S.words.includes(item.w)) return false;
+          if (vocabFilter === "custom" && !S.customWords.some(c => c.w === item.w)) return false;
+          if (vocabFilter !== "all" && vocabFilter !== "saved" && vocabFilter !== "custom" && item.c !== vocabFilter) return false;
+          if (vocabSearch) {
+            const q = vocabSearch.toLowerCase();
+            const inW = item.w.toLowerCase().includes(q);
+            const inH = (item.h || "").toLowerCase().includes(q);
+            const inP = (item.p || "").toLowerCase().includes(q);
+            if (!inW && !inH && !inP) return false;
+          }
+          return true;
+        });
+
+        if (!filtered.length) {
+          listDiv.innerHTML = `<div class="card" style="text-align:center"><p class="mu">No words found matching "${esc(vocabSearch)}".</p></div>`;
+          return;
+        }
+
+        listDiv.innerHTML = filtered
+          .map((v, i) => {
+            const isLearned = S.words.includes(v.w);
+            return `
+              <div class="card" id="vc-${i}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div>
+                    <span class="big">${esc(v.w)}</span>
+                    <span class="pron" style="margin-left:8px">(${esc(v.p || "")})</span>
+                  </div>
+                  <span class="badge">${esc(v.c || "general")}</span>
+                </div>
+                <p style="font-weight:600;color:var(--tx);margin:4px 0 8px">${esc(v.h)}</p>
+                <div style="background:var(--pr2);padding:10px 12px;border-radius:12px;margin:6px 0">
+                  <p style="margin:0 0 4px"><b>“${esc(v.e)}”</b></p>
+                  <p class="mu" style="margin:0;font-size:13px">${esc(v.eh || "")}</p>
+                </div>
+                <div class="row" style="margin-top:10px">
+                  <button class="s" style="padding:8px" onclick="speak('${esc(v.w).replace(/'/g, "\\'")}')">🔊 Word</button>
+                  <button class="s" style="padding:8px" onclick="speak('${esc(v.e).replace(/'/g, "\\'")}')">🔊 Sentence</button>
+                  <button class="s" style="padding:8px" onclick="practiceWord('${esc(v.w).replace(/'/g, "\\'")}', 'vc-${i}')">🎤 Speak</button>
+                  <button class="s" style="padding:8px" onclick="askGeminiWordExample('${esc(v.w).replace(/'/g, "\\'")}', 'vc-${i}')">✨ AI Ex</button>
+                  <button class="${isLearned ? 's' : ''}" style="padding:8px" onclick="learnW('${esc(v.w).replace(/'/g, "\\'")}')">${isLearned ? '✓ Learned' : 'Learn'}</button>
+                </div>
+                <div id="vc-${i}-feedback"></div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function practiceWord(targetWord, cardId) {
+        const fb = $(`#${cardId}-feedback`);
+        if (fb) fb.innerHTML = `<p class="mu" style="margin-top:8px">🔴 AI is listening... Bolen: <b>"${esc(targetWord)}"</b></p>`;
+
+        listen(
+          (said) => {
+            const sc = sim(said, targetWord);
+            const ok = sc >= 0.75;
+            if (fb) {
+              fb.innerHTML = `
+                <div class="fix" style="margin-top:8px">
+                  <p class="mu">You said: <b>"${esc(said)}"</b></p>
+                  ${ok ? '<p style="color:var(--ok)">✅ Perfect pronunciation! Well done!</p>' : `<p>Good try! Practice bolkar dekhein: <b>${esc(targetWord)}</b></p>`}
+                </div>
+              `;
+            }
+            if (ok && !S.words.includes(targetWord)) {
+              S.words.push(targetWord);
+              save();
+            }
+          },
+          (st) => {
+            if (st.startsWith("err") && fb) {
+              fb.innerHTML = `<p class="mu" style="color:var(--bad);margin-top:8px">${stMsg(st)}</p>`;
+            }
+          }
+        );
+      }
+      window.practiceWord = practiceWord;
+
+      async function askGeminiWordExample(word, cardId) {
+        const fb = $(`#${cardId}-feedback`);
+        if (fb) fb.innerHTML = `<p class="mu" style="margin-top:6px">✨ Gemini naya sentence generate kar raha hai...</p>`;
+        const prompt = `You are an English coach. Create ONE simple, realistic daily-spoken English sentence using the word "${word}", and its Hindi translation. Output JSON only: {"en":"...","hi":"..."}`;
+        const res = await callGeminiApi(prompt);
+        if (res && res.en && fb) {
+          fb.innerHTML = `
+            <div style="background:var(--pr2);padding:10px 12px;border-radius:12px;margin-top:8px">
+              <p style="margin:0 0 2px">✨ <b>“${esc(res.en)}”</b></p>
+              <p class="mu" style="margin:0;font-size:13px">${esc(res.hi || "")}</p>
+              <div class="row" style="margin-top:6px">
+                <button class="s" style="padding:4px 8px;font-size:12px" onclick="speak('${esc(res.en).replace(/'/g, "\\'")}')">🔊 Listen</button>
+                <button class="s" style="padding:4px 8px;font-size:12px" onclick="practiceStoryLine('${esc(res.en).replace(/'/g, "\\'")}', '${cardId}')">🎤 Speak</button>
+              </div>
+            </div>
+          `;
+          speak(res.en);
+        } else if (fb) {
+          fb.innerHTML = `<p class="mu" style="margin-top:6px">Could not load AI example. Please check internet or Gemini key.</p>`;
+        }
+      }
+      window.askGeminiWordExample = askGeminiWordExample;
+
+      function learnW(w) {
+        if (!S.words.includes(w)) S.words.push(w);
+        else S.words = S.words.filter((x) => x !== w);
+        save();
+        renderVocabCards();
+      }
+      window.learnW = learnW;
+
+      function openAddWordModal() {
+        showModal(`
+          <div>
+            <h2>➕ Add New Word</h2>
+            <p class="mu">Apna naya English word add karein jo aap seekhna chahte hain.</p>
+            <div style="margin:10px 0">
+              <label class="mu">English Word</label>
+              <input id="nw-w" placeholder="e.g. Resilience">
+            </div>
+            <div style="margin:10px 0">
+              <label class="mu">Hindi Meaning (अर्थ)</label>
+              <input id="nw-h" placeholder="e.g. कठिनाइयों से उबरने की क्षमता">
+            </div>
+            <div style="margin:10px 0">
+              <label class="mu">Pronunciation (उच्चारण)</label>
+              <input id="nw-p" placeholder="e.g. रेजिलिएंस">
+            </div>
+            <div style="margin:10px 0">
+              <label class="mu">Example Sentence</label>
+              <input id="nw-e" placeholder="e.g. He showed great resilience during tough times.">
+            </div>
+            <div style="margin:10px 0">
+              <label class="mu">Sentence in Hindi</label>
+              <input id="nw-eh" placeholder="e.g. उसने कठिन समय में बहुत लचीलापन दिखाया।">
+            </div>
+            <button style="width:100%;margin-top:10px" onclick="saveCustomWord()">Save Word</button>
+            <button class="g" style="width:100%;margin-top:6px" onclick="closeModal()">Cancel</button>
+          </div>
+        `);
+      }
+      window.openAddWordModal = openAddWordModal;
+
+      function saveCustomWord() {
+        const w = $("#nw-w").value.trim();
+        const h = $("#nw-h").value.trim();
+        const p = $("#nw-p").value.trim();
+        const e = $("#nw-e").value.trim();
+        const eh = $("#nw-eh").value.trim();
+        if (!w || !h) {
+          alert("English word aur Hindi meaning zaroori hai!");
+          return;
+        }
+        S.customWords.unshift({ w, h, p: p || w, c: "custom", e: e || `I am using the word ${w}.`, eh: eh || "" });
+        save();
+        closeModal();
+        R.vocab();
+      }
+      window.saveCustomWord = saveCustomWord;
+
+      // Vocabulary Flashcards Quiz
+      let quizIndex = 0;
+      let quizFlipped = false;
+      let quizScore = 0;
+
+      R.vocabQuiz = () => {
+        const list = [...VOC_BOOK, ...S.customWords];
+        if (quizIndex >= list.length) quizIndex = 0;
+        const it = list[quizIndex];
+
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>Vocab Quiz 🃏</h1>
+            <span class="badge">${quizIndex + 1}/${list.length}</span>
+          </div>
+          <p class="mu">Card par tap karke meaning aur example dekhein, ya bolkar test karein.</p>
+
+          <div class="quiz-card" onclick="quizFlipped=!quizFlipped;R.vocabQuiz()">
+            ${
+              !quizFlipped
+                ? `<div>
+                    <span class="badge">${esc(it.c || "word")}</span>
+                    <div style="font-size:32px;font-weight:700;margin:12px 0">${esc(it.w)}</div>
+                    <p class="pron">(${esc(it.p || "")})</p>
+                    <p class="mu" style="margin-top:16px">👆 Tap to flip and reveal Hindi meaning</p>
+                  </div>`
+                : `<div>
+                    <p style="font-size:24px;font-weight:700;color:var(--pr);margin:0 0 8px">${esc(it.h)}</p>
+                    <p style="font-weight:500;margin:10px 0">“${esc(it.e)}”</p>
+                    <p class="mu" style="font-size:13px">${esc(it.eh || "")}</p>
+                    <p class="mu" style="margin-top:14px">👆 Tap to flip back</p>
+                  </div>`
+            }
+          </div>
+
+          <div class="row">
+            <button class="s" onclick="speak('${esc(it.w).replace(/'/g, "\\'")}')">🔊 Listen Word</button>
+            <button class="s" onclick="speak('${esc(it.e).replace(/'/g, "\\'")}')">🔊 Listen Sentence</button>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <button class="s" onclick="quizIndex = Math.max(0, quizIndex - 1);quizFlipped=false;R.vocabQuiz()">← Prev</button>
+            <button onclick="quizIndex = (quizIndex + 1) % ${list.length};quizFlipped=false;R.vocabQuiz()">Next →</button>
+          </div>
+
+          <button class="g" style="width:100%;margin-top:12px" onclick="go('vocab')">← Back to Vocab Book</button>
+        `;
+      };
+
+      // ---------- READING STORIES SCREEN ----------
+      let currentStory = STORIES[0];
+
+      R.stories = (id) => {
+        if (id) {
+          const found = STORIES.find((s) => s.id === id);
+          if (found) currentStory = found;
+        }
+
+        A.innerHTML = `
+          <h1>Story Books 📚</h1>
+          <p class="mu">English kahaniyan padhein, sunein aur bolne ka riyaz karein.</p>
+
+          <div class="pills" style="margin-bottom:12px">
+            ${STORIES.map(
+              (s) =>
+                `<span class="pill ${s.id === currentStory.id ? 'active' : ''}" onclick="go('stories','${s.id}')">${s.title.split(' ')[0]}</span>`,
+            ).join("")}
+          </div>
+
+          <div class="card">
+            <h2>${esc(currentStory.title)}</h2>
+            <p class="mu">${esc(currentStory.desc)}</p>
+            <button class="s" style="width:100%;margin-top:8px" onclick="playWholeStory()">🔊 Read Full Story Aloud</button>
+          </div>
+
+          <h3>Line-by-line Reading Practice</h3>
+          ${currentStory.lines
+            .map(
+              (l, idx) => `
+                <div class="story-box" id="st-line-${idx}">
+                  <p class="big" style="font-size:17px;margin:0 0 4px">${esc(l.en)}</p>
+                  <p class="mu" style="margin:0 0 8px;font-size:14px">${esc(l.hi)}</p>
+                  <div class="row">
+                    <button class="s" style="padding:6px 12px;font-size:13px" onclick="speak('${esc(l.en).replace(/'/g, "\\'")}')">🔊 Listen</button>
+                    <button class="s" style="padding:6px 12px;font-size:13px" onclick="practiceStoryLine('${esc(l.en).replace(/'/g, "\\'")}', 'st-line-${idx}')">🎤 Speak</button>
+                  </div>
+                  <div id="st-line-${idx}-fb"></div>
+                </div>
+              `,
+            )
+            .join("")}
+
+          <button class="g" style="width:100%;margin-top:14px" onclick="go('home')">← Back to Home</button>
+        `;
+      };
+
+      function playWholeStory() {
+        if (!currentStory) return;
+        const text = currentStory.lines.map((l) => l.en).join(". ");
+        speak(text);
+      }
+      window.playWholeStory = playWholeStory;
+
+      function practiceStoryLine(targetSentence, containerId) {
+        const fb = $(`#${containerId}-fb`);
+        if (fb) fb.innerHTML = `<p class="mu" style="margin-top:6px">🔴 AI is listening... Bolen: "${esc(targetSentence)}"</p>`;
+
+        listen(
+          (said) => {
+            const sc = sim(said, targetSentence);
+            const ok = sc >= 0.7;
+            if (fb) {
+              fb.innerHTML = `
+                <div class="fix" style="margin-top:6px">
+                  <p class="mu">You said: <b>"${esc(said)}"</b></p>
+                  ${ok ? '<p style="color:var(--ok)">✅ Very good pronunciation!</p>' : `<p>Good try! Ek baar repeat karein: <b>${esc(targetSentence)}</b></p>`}
+                </div>
+              `;
+            }
+          },
+          (st) => {
+            if (st.startsWith("err") && fb) {
+              fb.innerHTML = `<p class="mu" style="color:var(--bad);margin-top:6px">${stMsg(st)}</p>`;
+            }
+          }
+        );
+      }
+      window.practiceStoryLine = practiceStoryLine;
+
+      // ---------- DRILLS ----------
+      let D = { items: [], i: 0, title: "", tries: 0 };
+      function drillUI() {
+        const it = D.items[D.i];
+        if (!it) {
+          A.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:50px">🎉</div><h2>${esc(D.title)} complete!</h2><p>You spoke ${D.items.length} sentences. Keep going!</p></div><button style="width:100%" onclick="go('home')">Home</button>`;
+          return;
+        }
+        A.innerHTML = `
+          <p class="mu">${esc(D.title)} · ${D.i + 1}/${D.items.length}</p>
+          <div class="card">
+            ${it.hi ? `<p class="mu">${esc(it.hi)}</p>` : ""}
+            <p class="big">${esc(it.en)}</p>
+            ${it.pron ? `<p class="pron">${esc(it.pron)}</p>` : ""}
+            <div class="row">
+              <button class="s" onclick="speak(D.items[D.i].en)">🔊 Listen</button>
+              <button class="s" onclick="speak(D.items[D.i].en,.6)">🐢 Slow</button>
+              ${it.help ? `<button class="s" onclick="$('#hh').hidden=!$('#hh').hidden">हिंदी Help</button>` : ""}
+            </div>
+            <p id="hh" hidden class="fix">${esc(it.help || "")}</p>
+          </div>
+
+          <button class="mic" id="mic" onclick="drillMic()">🎤</button>
+          <p class="mu" style="text-align:center;min-height:24px" id="st">Tap & Speak</p>
+          <div id="fb"></div>
+
+          <input id="tp" placeholder="Type karein, ya Windows par [Win + H] se bolein" style="margin-top:10px" onkeydown="if(event.key==='Enter')drillCheck(this.value)">
+          <button style="width:100%;margin-top:8px" onclick="drillCheck($('#tp').value)">Send ➤</button>
+          <p class="mu" style="font-size:12px;text-align:center;margin-top:6px">💡 Tip: Mic error aane par <b>Run-Bolo.bat</b> se kholein ya <b>Win + H</b> dabayein.</p>
+        `;
+      }
+      function drillMic() {
+        listen(
+          (t) => drillCheck(t),
+          (s) => {
+            $("#mic") && $("#mic").classList.toggle("rec", s === "rec");
+            const st = $("#st");
+            if (!st) return;
+            st.textContent = stMsg(s);
+          },
+        );
+      }
+      function drillCheck(t) {
+        if (!t) return;
+        const it = D.items[D.i],
+          sc = sim(t, it.en),
+          ok = sc >= 0.8;
+        S.sent++;
+        save();
+        $("#fb").innerHTML = `<div class="card"><p class="mu">You said:</p><p><b>${esc(t)}</b></p>${
+          ok
+            ? `<p style="color:var(--ok)">✅ Good — clear and correct. Sentence saved to your practice count.</p><button style="width:100%" onclick="D.i++;D.tries=0;drillUI()">Next →</button>`
+            : `<p>Good try! 👍 Bas ek small correction:</p><p class="fix big">${esc(it.en)}</p><p class="mu">Now say it again.</p><div class="row"><button class="s" onclick="speak(D.items[D.i].en)">🔊 Listen</button><button onclick="drillMic()">🎤 Repeat</button></div>${
+                D.tries >= 2
+                  ? `<button class="g" style="width:100%" onclick="D.i++;D.tries=0;drillUI()">Skip for now</button>`
+                  : ""
+              }`
+        }</div>`;
+        if (!ok) {
+          D.tries++;
+          addMist(t, it.en, it.help);
+        }
+      }
+      R.drill = () => {
+        D = {
+          items: WARM.map((w) => ({
+            hi: w[0],
+            en: w[1],
+            pron: w[2],
+            help: w[3],
+          })),
+          i: 0,
+          title: "Warm-up",
+          tries: 0,
+        };
+        S.done[today()] = 1;
+        touch();
+        save();
+        drillUI();
+      };
+      R.sent = () => {
+        const it = [];
+        PAT.forEach((p) =>
+          p[2].forEach((s) => it.push({ hi: p[0] + " — " + p[1], en: s })),
+        );
+        D = { items: it, i: 0, title: "Sentence Builder", tries: 0 };
+        drillUI();
+      };
+      R.gram = () => {
+        const it = [];
+        GRAM.forEach((g) => {
+          it.push({ hi: "❌ " + g[0], en: g[1], help: g[2] });
+        });
+        D = { items: it, i: 0, title: "Grammar Through Speaking", tries: 0 };
+        drillUI();
+      };
+      R.pron = () => {
+        D = {
+          items: PRON.map((w) => ({ hi: "Say this word slowly", en: w })),
+          i: 0,
+          title: "Pronunciation",
+          tries: 0,
+        };
+        drillUI();
+      };
+      R.mist = () => {
+        A.innerHTML = `<h1>My Common Mistakes 📓</h1>${
+          S.mist.length
+            ? S.mist
+                .map(
+                  (m) =>
+                    `<div class="card"><p>❌ ${esc(m.w)}</p><p style="color:var(--ok)">✅ ${esc(m.r)}</p>${m.tip ? `<p class="mu">${esc(m.tip)}</p>` : ""}<button class="s" onclick="speak('${esc(m.r).replace(/'/g, "\\'")}')">🔊 Practice</button></div>`,
+                )
+                .join("")
+            : '<div class="card"><p>No mistakes saved yet. Start speaking — mistakes here are how you grow 🌱</p></div>'
+        }${
+          S.mist.length
+            ? `<button style="width:100%" onclick="D={items:S.mist.slice(0,8).map(m=>({hi:'Revise',en:m.r,help:m.tip})),i:0,title:'Mistake revision',tries:0};drillUI()">Revise now</button>`
+            : ""
+        }`;
+      };
+      R.chal = () => {
+        const d = Math.min(30, Object.keys(S.done).length + 1);
+        A.innerHTML = `<h1>🔥 Day ${d} Challenge</h1><div class="card"><p class="big">${CH(d)}</p><p class="mu">Speak, then get friendly feedback from your AI partner.</p></div><button style="width:100%" onclick="go('chat','chal')">Start challenge</button>`;
+      };
+      R.prog = () => {
+        const d = Object.keys(S.done).length;
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>My Progress 📈</h1>
+            <span class="badge" style="background:var(--ok);color:#fff">☁️ Cloud Synced</span>
+          </div>
+          <div class="card grid"><div class="stat"><b>${Math.round(S.secs / 60)}</b>min spoken</div><div class="stat"><b>${S.streak}🔥</b>day streak</div><div class="stat"><b>${S.sent}</b>sentences</div><div class="stat"><b>${S.words.length}</b>words</div><div class="stat"><b>${S.convos}</b>conversations</div><div class="stat"><b>${S.mist.length}</b>to revise</div></div>
+          <div class="card"><h2>30-Day Journey</h2><div class="days">${Array.from({ length: 30 }, (_, i) => `<span class="${i < d ? "d" : ""} ${i === d ? "t" : ""}">${i + 1}</span>`).join("")}</div><p class="mu">${Object.entries(
+            JOURNEY,
+          )
+            .map(([k, v]) => "Day " + k + ": " + v)
+            .join(" · ")}</p></div>
+          <div class="card"><p>${S.secs < 60 ? "Start with one short conversation today. Small steps! 🌱" : "Great! Your confidence is improving. Keep going!"}</p>${d >= 30 ? `<p><b>Next level:</b> ${LV[Math.min(5, S.level + 1)]}</p>` : ""}</div>`;
+      };
+
+      R.set = () => {
+        A.innerHTML = `<h1>Settings ⚙️</h1>
+          <div class="card">
+            <p><b>Your Name</b></p>
+            <input value="${esc(S.name)}" onchange="S.name=this.value;save()">
+            <p style="margin-top:12px"><b>Color Theme</b></p>
+            <div class="row">
+              ${["auto", "light", "dark"]
+                .map(
+                  (t) =>
+                    `<button class="${S.theme === t ? "" : "s"}" onclick="S.theme='${t}';save();theme();R.set()">${t}</button>`,
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <!-- Supabase Cloud Database Section -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <b>☁️ Supabase Cloud Database</b>
+              <span class="badge" style="background:var(--ok);color:#fff">
+                ● Connected
+              </span>
+            </div>
+            <p class="mu">Aapka speaking progress, streak, vocabulary aur mistakes Supabase Cloud mein automatically backup hote hain.</p>
+            
+            <div style="background:var(--pr2);padding:10px 12px;border-radius:12px;margin:8px 0;font-size:13px">
+              <div><b>Project URL:</b> <code>https://jyatlsllsdmtdmvohhfz.supabase.co</code></div>
+              <div style="margin-top:4px"><b>Storage Bucket:</b> <code>bolo_cloud</code></div>
+              <div style="margin-top:4px"><b>Sync User ID:</b> <code>${esc(S.userId || 'brajesh_main')}</code></div>
+              <div style="margin-top:4px"><b>Last Synced:</b> ${esc(S.lastCloudSync || 'Recently Synced')}</div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <button class="s" style="padding:10px" onclick="manualCloudBackup()">⬆️ Backup to Cloud</button>
+              <button class="s" style="padding:10px" onclick="manualCloudRestore()">⬇️ Restore from Cloud</button>
+            </div>
+            <button class="s" style="width:100%;margin-top:8px" onclick="testSupabaseConnection()">⚡ Test Supabase Connection</button>
+            <div id="supabase-test-res" style="margin-top:8px;font-size:13.5px"></div>
+          </div>
+
+          <!-- Google Gemini AI Section -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <b>✨ Google Gemini AI Mode</b>
+              <span class="badge" style="background:${S.aiMode === 'gemini' ? 'var(--ok)' : 'var(--bd)'};color:${S.aiMode === 'gemini' ? '#fff' : 'var(--mu)'}">
+                ${S.aiMode === 'gemini' ? 'Active' : 'Offline'}
+              </span>
+            </div>
+            <p class="mu">Google Gemini AI ke zariye natural conversation aur smart Hinglish feedback payein.</p>
+            
+            <div class="row" style="margin:10px 0">
+              <button class="${S.aiMode === 'gemini' ? '' : 's'}" onclick="S.aiMode='gemini';save();R.set()">✨ Gemini Mode</button>
+              <button class="${S.aiMode === 'local' ? '' : 's'}" onclick="S.aiMode='local';save();R.set()">🏠 Local Mode</button>
+            </div>
+
+            <div style="margin:12px 0">
+              <label class="mu" style="font-size:13px">Gemini API Key</label>
+              <div style="display:flex;gap:6px;margin-top:4px">
+                <input type="password" id="gemini-key-input" value="${esc(S.geminiKey || '')}" placeholder="Gemini API Key">
+                <button class="s" style="padding:10px 14px;white-space:nowrap" onclick="toggleKeyVisibility()">👁️</button>
+                <button class="s" style="padding:10px 14px;white-space:nowrap" onclick="saveGeminiKey()">Save</button>
+              </div>
+            </div>
+
+            <button class="s" style="width:100%;margin-top:6px" onclick="testGeminiConnection()">⚡ Test Gemini Connection</button>
+            <div id="gemini-test-res" style="margin-top:8px;font-size:13.5px"></div>
+          </div>
+
+          <div class="card">
+            <p><b>Backend API Server (Render / Local)</b></p>
+            <p class="mu" style="font-size:13px">Render ya Localhost backend URL yahan daalein (e.g. <code>https://bolo-english-backend.onrender.com</code> ya <code>http://localhost:8000</code>):</p>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <input type="text" id="backend-url-input" value="${esc(S.backendUrl || '')}" placeholder="http://localhost:8000">
+              <button class="s" style="padding:10px 14px;white-space:nowrap" onclick="saveBackendUrl()">Save</button>
+            </div>
+            <button class="s" style="width:100%;margin-top:8px" onclick="testBackendConnection()">⚡ Test Backend Connection</button>
+            <div id="backend-test-res" style="margin-top:8px;font-size:13.5px"></div>
+          </div>
+
+          <div class="card">
+            <p><b>Microphone & Server</b></p>
+            <p class="mu">Web Speech API runs best on <code>http://localhost:8000</code> or HTTPS. Folder mein diye <b>Run-Bolo.bat</b> se start karein.</p>
+            <button class="s" style="width:100%" onclick="showMicHelp()">🎤 Mic Diagnostics & Fix</button>
+          </div>
+
+          <div class="card">
+            <p class="mu">Your progress is saved both in browser and Supabase cloud.</p>
+            <button class="s" onclick="if(confirm('Reset everything?')){localStorage.removeItem(K);location.reload()}">Reset progress</button>
+          </div>`;
+      };
+
+      async function manualCloudBackup() {
+        const ok = await syncToSupabaseCloud();
+        alert("✅ Supabase Cloud mein aapka data successfully backup ho gaya!");
+        R.set();
+      }
+
+      async function manualCloudRestore() {
+        if (!confirm("Supabase Cloud se purana data restore karein?")) return;
+        const data = await loadFromSupabaseCloud();
+        if (data) {
+          alert(`✅ Restored from Supabase! Welcome back, ${S.name || 'Student'}! Streak: ${S.streak} days, Words: ${S.words.length}`);
+          go(view);
+        } else {
+          alert("Could not load from Supabase Cloud. Check internet connection.");
+        }
+      }
+
+      async function testSupabaseConnection() {
+        const out = $("#supabase-test-res");
+        if (!out) return;
+        out.innerHTML = "Connecting to Supabase...";
+        try {
+          const testUrl = `${SUPABASE_CONFIG.url}/storage/v1/object/public/bolo_cloud/test_sync.json`;
+          const res = await fetch(testUrl);
+          if (res.ok) {
+            out.innerHTML = `<p style="color:var(--ok);margin:4px 0"><b>✅ Supabase Connected Successfully!</b><br>Project URL: <code>${SUPABASE_CONFIG.url}</code><br>Bucket: <code>bolo_cloud</code> (Public Verified)</p>`;
+          } else {
+            out.innerHTML = `<p style="color:var(--bad);margin:4px 0">Connection status: ${res.status}</p>`;
+          }
+        } catch (e) {
+          out.innerHTML = `<p style="color:var(--bad);margin:4px 0">Error: ${esc(e.message)}</p>`;
+        }
+      }
+
+      window.manualCloudBackup = manualCloudBackup;
+      window.manualCloudRestore = manualCloudRestore;
+      window.testSupabaseConnection = testSupabaseConnection;
+
+      function toggleKeyVisibility() {
+        const inp = $("#gemini-key-input");
+        if (inp) {
+          inp.type = inp.type === "password" ? "text" : "password";
+        }
+      }
+      function saveGeminiKey() {
+        const inp = $("#gemini-key-input");
+        if (inp) {
+          S.geminiKey = inp.value.trim();
+          save();
+          alert("Gemini API Key saved!");
+          R.set();
+        }
+      }
+      async function testGeminiConnection() {
+        const out = $("#gemini-test-res");
+        if (!out) return;
+        out.innerHTML = "Connecting to Google Gemini...";
+        const res = await callGeminiApi('Reply in 1 short sentence: "Gemini connection is working!"');
+        if (res && res.reply) {
+          out.innerHTML = `<p style="color:var(--ok);margin:4px 0"><b>✅ Connected Successfully!</b><br>Gemini: "${esc(res.reply)}"</p>`;
+        } else {
+          out.innerHTML = `<p style="color:var(--bad);margin:4px 0"><b>❌ Connection failed.</b> Please check internet or key.</p>`;
+        }
+      }
+      async function testBackendConnection() {
+        const out = $("#backend-test-res");
+        if (!out) return;
+        out.innerHTML = "Connecting to Backend API Server...";
+        try {
+          const res = await fetch(getApiUrl("/"));
+          if (res.ok) {
+            const data = await res.json();
+            out.innerHTML = `<p style="color:var(--ok);margin:4px 0"><b>✅ Backend Server Online!</b><br>Service: ${esc(data.service)}<br>Supabase: ${data.supabaseReady ? '✅ Ready' : '❌ Not configured'} | Gemini: ${data.geminiReady ? '✅ Ready' : '❌ Not configured'}</p>`;
+          } else {
+            out.innerHTML = `<p style="color:var(--bad);margin:4px 0">Status code: ${res.status}</p>`;
+          }
+        } catch (e) {
+          out.innerHTML = `<p style="color:var(--bad);margin:4px 0">Cannot connect: ${esc(e.message)}</p>`;
+        }
+      }
+      function saveBackendUrl() {
+        const inp = $("#backend-url-input");
+        if (inp) {
+          S.backendUrl = inp.value.trim().replace(/\/+$/, "");
+          save();
+          alert("Backend Server URL saved!");
+          R.set();
+        }
+      }
+      window.toggleKeyVisibility = toggleKeyVisibility;
+      window.saveGeminiKey = saveGeminiKey;
+      window.testGeminiConnection = testGeminiConnection;
+      window.saveBackendUrl = saveBackendUrl;
+      window.testBackendConnection = testBackendConnection;
+
+      // ---------- AI CONVERSATION (TEXT & TAP CHAT) ----------
+      let C = { k: "free", msgs: [], busy: false, sample: null };
+
+      // Built-in Intelligent Dialogue & Grammar Engine for Standalone Browsers
+      function generateLocalAiTurn(userText, scKey) {
+        const text = (userText || "").toLowerCase();
+        let correction = null;
+
+        // Common Indian Learner English Grammar Checks
+        if (text.includes("i am go") || text.includes("i am come")) {
+          correction = { wrong: "I am go", right: "I am going", tip_hi: "'am' ke baad verb me 'ing' lagta hai: I am going." };
+        } else if (text.includes("he have") || text.includes("she have")) {
+          correction = { wrong: "He/She have", right: "He/She has", tip_hi: "He/She/It ke saath hamesha 'has' use hota hai." };
+        } else if (text.includes("i am agree")) {
+          correction = { wrong: "I am agree", right: "I agree", tip_hi: "'Agree' khud ek kriya (verb) hai, 'am' ki zaroorat nahi hoti." };
+        } else if (text.includes("didn't went") || text.includes("did not went")) {
+          correction = { wrong: "did not went", right: "did not go", tip_hi: "'Did' ke saath hamesha first form of verb (go) aati hai." };
+        } else if (text.includes("myself ") && text.indexOf("myself") === 0) {
+          correction = { wrong: "Myself...", right: "My name is... / I am...", tip_hi: "Interview ya introduction me 'My name is' kehna zyada formal hai." };
+        } else if (text.includes("today morning")) {
+          correction = { wrong: "today morning", right: "this morning", tip_hi: "Aaj subah ke liye 'this morning' sahi expression hai." };
+        } else if (text.includes("yesterday night")) {
+          correction = { wrong: "yesterday night", right: "last night", tip_hi: "Kal raat ke liye 'last night' bolna behtar hai." };
+        }
+
+        const repliesByScenario = {
+          free: [
+            "That's really interesting! Tell me, what do you usually like doing on weekends?",
+            "Nice to know! Which programming language do you enjoy working on the most?",
+            "Sounds great! How do you spend your free time with your college friends?",
+            "I see! What is your favorite movie or TV series that you watched recently?"
+          ],
+          riya: [
+            "Totally agree! College life is hectic but fun. What subject are you studying today?",
+            "That sounds awesome! Did you hang out at the canteen or library today?",
+            "Haha, same here! What are your plans after classes finish?"
+          ],
+          vikram: [
+            "Thank you for sharing that. Can you tell me about a challenging project you have worked on?",
+            "Good. What are your key technical strengths, and how do you handle teamwork?",
+            "Impressive. Where do you see yourself professionally in the next three years?",
+            "Why do you think we should hire you for this role as a software fresher?"
+          ],
+          class: [
+            "Yes, exactly! Have you completed the latest assignment given by the professor?",
+            "I agree. Are you planning to prepare for the upcoming semester exams together?",
+            "Good point! What did you think about today's morning lecture?",
+            "Definitely! Let's go to the college library to study this topic."
+          ],
+          prof: [
+            "Good question. Always make sure to write clean, modular code. What specific doubt do you have?",
+            "I appreciate your curiosity. Have you gone through the textbook chapter on this concept?",
+            "Very well said. Make sure to submit your lab record before the deadline."
+          ],
+          hr: [
+            "Thank you for sharing that. Can you tell me about a challenging project you have worked on?",
+            "Great! What are your key technical strengths, and how do you handle teamwork?",
+            "Impressive. Where do you see yourself professionally in the next three years?"
+          ],
+          shop: [
+            "Welcome! Would you like to see our menu or order drinks first?",
+            "Sure, that will take around ten minutes. Would you like anything else with that?",
+            "Certainly! Here is your bill. Would you prefer paying with UPI or cash?"
+          ],
+          kabir: [
+            "Coming right up! Would you like sugar with your coffee or snacks?",
+            "Great choice! Do you often visit this area of the city?"
+          ],
+          priya: [
+            "Very good attempt! Every small conversation improves your confidence. What do you like doing in free time?",
+            "That's wonderful! Keep speaking boldly without any fear of mistakes."
+          ],
+          chal: [
+            "Good effort on your daily challenge speech! What was the main lesson you learned today?",
+            "You spoke clearly and confidently! Keep practicing like this every day."
+          ]
+        };
+
+        const pool = repliesByScenario[scKey] || repliesByScenario.free;
+        const reply = pool[Math.floor(Math.random() * pool.length)];
+        return { reply, correction, hint_hi: "Tip: Ek do sentences me natural jawab dein." };
+      }
+
+      R.chat = async (k) => {
+        C = { k: k || "free", msgs: [], busy: false, sample: C.sample };
+        const sc = SC[C.k] || ["Speaking challenge", ""];
+        A.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h1>${esc(sc[0])}</h1>
+            <span class="badge" style="cursor:pointer" onclick="go('set')" title="Click to manage AI Mode">
+              ${S.aiMode === "gemini" ? "✨ Gemini AI" : "🏠 Local AI"}
+            </span>
+          </div>
+          <div id="log"></div>
+          <div id="fb"></div>
+          <button class="mic" id="mic" onclick="chatMic()">🎤</button>
+          <p class="mu" style="text-align:center;min-height:24px" id="st">Tap & Speak</p>
+          <input id="tp" placeholder="Type karein, ya Windows par [Win + H] se bolein" onkeydown="if(event.key==='Enter'){chatSend(this.value);this.value=''}">
+          <button style="width:100%;margin-top:8px" onclick="chatSend($('#tp').value);$('#tp').value=''">Send ➤</button>
+          <p class="mu" style="font-size:12px;text-align:center;margin-top:6px">💡 Tip: Mic error aane par <b>Run-Bolo.bat</b> se kholein ya <b>Win + H</b> dabayein.</p>
+        `;
+
+        try {
+          if (typeof claude !== "undefined" && claude.use) {
+            C.sample = C.sample || (await claude.use("sample"));
+          }
+        } catch (e) {}
+
+        S.convos++;
+        save();
+        aiTurn(
+          C.k === "chal"
+            ? "Start: give me the day challenge topic and ask me to speak."
+            : "Start the conversation with a short greeting and one easy question.",
+        );
+      };
+
+      function sys() {
+        const sc = SC[C.k] || [
+          "",
+          "a speaking coach giving a timed speaking challenge",
+        ];
+        const hin =
+          S.level <= 1
+            ? "Give hints in Hinglish (Hindi in Roman script)."
+            : "Use little Hindi.";
+        return `You are a friendly senior + English teacher + speaking partner for ${S.name || "a student"}, a B.Tech CSE student (level ${LV[Math.min(S.level, 5)]}, goal ${S.goal}). Role: ${sc[1]}. Rules: reply in 1-2 SHORT simple English sentences and ask one follow-up question. Never insult; be warm, not over-praising. If the student's last message has an important mistake, give ONE correction (most important only). ${hin} If they seem stuck, give a sentence starter hint. Output ONLY JSON: {"reply":"...","correction":null or {"wrong":"...","right":"...","tip_hi":"short Hinglish tip"},"hint_hi":"short Hinglish hint or empty"}`;
+      }
+
+      async function aiTurn(userText) {
+        if (C.busy) return;
+        C.busy = true;
+        $("#st").textContent = S.aiMode === "gemini" ? "✨ Gemini AI is thinking..." : "AI is thinking...";
+
+        let j = null;
+
+        // 1. Try Gemini AI Mode if active
+        if (S.aiMode === "gemini" && S.geminiKey) {
+          const geminiPrompt =
+            sys() +
+            '\n\nConversation history (learner lines start with "Learner:", you are "AI:"):\n' +
+            C.msgs.map((m) => (m.r === "ai" ? "AI: " : "Learner: ") + m.t).join("\n") +
+            "\nLearner: " +
+            userText;
+
+          try {
+            j = await callGeminiApi(geminiPrompt);
+          } catch (e) {
+            console.warn("Gemini call error:", e);
+          }
+        }
+
+        // 2. Try Claude sample if available
+        if (!j && C.sample) {
+          try {
+            j = await C.sample.json(
+              [
+                {
+                  role: "user",
+                  content:
+                    sys() +
+                    '\n\nConversation (learner lines start with "Learner:"):\n' +
+                    C.msgs
+                      .map((m) => (m.r === "ai" ? "You: " : "Learner: ") + m.t)
+                      .join("\n") +
+                    "\nLearner: " +
+                    userText,
+                },
+              ],
+              { cache: false },
+            );
+          } catch (e) {}
+        }
+
+        // 3. Fallback to Local AI Dialogue Engine
+        if (!j) {
+          await new Promise((r) => setTimeout(r, 350));
+          if (C.msgs.length === 0) {
+            const greetings = {
+              free: `Hello ${S.name || "there"}! Great to see you. How is your day going?`,
+              class: `Hey ${S.name || "friend"}! Did you finish working on the assignment?`,
+              prof: `Good day ${S.name || "student"}. What topic are you working on today?`,
+              hr: `Hello ${S.name || "candidate"}, welcome to your interview. Could you please introduce yourself?`,
+              shop: `Hello! Welcome to our cafe. How may I help you today?`,
+              chal: `Welcome to today's challenge! Please share your thoughts on the topic.`
+            };
+            j = {
+              reply: greetings[C.k] || `Hello ${S.name || "friend"}! What would you like to talk about today?`,
+              correction: null,
+              hint_hi: "Bolna shuru karein!",
+            };
+          } else {
+            j = generateLocalAiTurn(userText, C.k);
+          }
+        }
+
+        C.busy = false;
+        const log = $("#log");
+        if (log && j) {
+          if (j.correction && j.correction.wrong) {
+            addMist(
+              j.correction.wrong,
+              j.correction.right,
+              j.correction.tip_hi,
+            );
+            log.insertAdjacentHTML(
+              "beforeend",
+              `<div class="fix">Good try! 👍 Small correction:<br>❌ ${esc(j.correction.wrong)}<br>✅ <b>${esc(j.correction.right)}</b><br><span class="mu">${esc(j.correction.tip_hi || "")}</span> <button class="s" style="padding:4px 10px" onclick="speak('${esc(j.correction.right).replace(/'/g, "\\'")}')">🔊</button></div>`,
+            );
+          }
+          C.msgs.push({ r: "ai", t: j.reply });
+          log.insertAdjacentHTML(
+            "beforeend",
+            `<div class="bub ai">${esc(j.reply)}<div class="row" style="margin-top:6px"><button class="s" style="padding:4px 10px" onclick="speak(this.dataset.t)" data-t="${esc(j.reply)}">🔊 Replay</button><button class="s" style="padding:4px 10px" onclick="speak(this.dataset.t,.6)" data-t="${esc(j.reply)}">🐢 Slow</button></div></div>`,
+          );
+          if ($("#fb")) {
+            $("#fb").innerHTML = j.hint_hi
+              ? `<p class="fix">💡 ${esc(j.hint_hi)}</p>`
+              : "";
+          }
+          if ($("#st")) $("#st").textContent = "Tap & Speak";
+          speak(j.reply);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+      }
+
+      function chatSend(t) {
+        if (!t) return;
+        t = t.trim();
+        if (!t) return;
+        S.sent++;
+        save();
+        $("#log").insertAdjacentHTML(
+          "beforeend",
+          `<div class="bub me">${esc(t)}</div>`,
+        );
+        const prev = t;
+        aiTurn(t).then(() => {});
+        C.msgs.push({ r: "me", t: prev });
+      }
+
+      function chatMic() {
+        listen(
+          (t) => chatSend(t),
+          (s) => {
+            $("#mic") && $("#mic").classList.toggle("rec", s === "rec");
+            const st = $("#st");
+            if (!st || C.busy) return;
+            st.textContent = stMsg(s);
+          },
+        );
+      }
+
+      window.chatSend = chatSend;
+      window.chatMic = chatMic;
+      window.drillMic = drillMic;
+      window.drillCheck = drillCheck;
+      window.D = D;
+      Object.defineProperty(window, "D", {
+        get: () => D,
+        set: (v) => {
+          D = v;
+        },
+      });
+      window.S = S;
+
+      go(S.level < 0 ? "splash" : "home");
+      checkProtocolBanner();
+    </script>
+  </body>
+</html>

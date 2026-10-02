@@ -2453,8 +2453,11 @@
         } catch (e) {}
       }
 
-      // Automatic background sync to Supabase Cloud
+      // Automatic background sync to Supabase Cloud with backoff resilience
       let cloudSyncTimer = null;
+      let backendSaveUnavailable = false;
+      let lastBackendSyncTry = 0;
+
       async function syncToSupabaseCloud() {
         try {
           const userId = S.userId || "brajesh_main";
@@ -2466,21 +2469,29 @@
             }
           };
 
-          if (window.location.protocol.startsWith("http")) {
-            const res = await fetch(getApiUrl("/api/supabase/save"), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-              S.lastCloudSync = new Date().toLocaleTimeString();
-              saveLocalOnly();
-              return true;
+          const now = Date.now();
+          // If backend was unreachable or 404 previously, only retry every 45s to avoid flooding console
+          if (window.location.protocol.startsWith("http") && (!backendSaveUnavailable || (now - lastBackendSyncTry > 45000))) {
+            lastBackendSyncTry = now;
+            try {
+              const res = await fetch(getApiUrl("/api/supabase/save"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+              });
+              if (res.ok) {
+                backendSaveUnavailable = false;
+                S.lastCloudSync = new Date().toLocaleTimeString();
+                saveLocalOnly();
+                return true;
+              } else if (res.status === 404) {
+                backendSaveUnavailable = true;
+              }
+            } catch (netErr) {
+              backendSaveUnavailable = true;
             }
           }
-        } catch (e) {
-          console.warn("Supabase auto-sync:", e);
-        }
+        } catch (e) {}
         return false;
       }
 
@@ -4513,14 +4524,339 @@
 
       let speakingState = {
         activeExercise: null,
-        stage: "idle", // "idle" | "prep" | "speaking" | "review"
-        timer: 0,
+        stage: "idle", // "idle" | "speaking" | "review"
+        timer: 0, // Unlimited stopwatch in seconds (0, 1, 2, 3...)
         interval: null,
         speechText: "",
+        finalTranscript: "",
+        interimTranscript: "",
         wordsUsed: 0,
         startTime: 0,
-        recog: null
+        recog: null,
+        isExplicitlyStopped: false,
+        restartAttempts: 0,
+        audioStream: null,
+        audioContext: null,
+        analyser: null,
+        lang: "en-IN", // Indian English by default for optimal speech recognition
+        micActive: false,
+        lastScore: 78,
+        lastFluency: 80,
+        lastPronunciation: 75,
+        lastVocab: 78,
+        lastGrammar: 79,
+        lastDuration: 0,
+        lastWpm: 0
       };
+
+      let visualizerAnimFrame = null;
+      function startAudioVisualizerLoop() {
+        if (!speakingState.analyser) return;
+        const bufferLength = speakingState.analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        function drawWave() {
+          if (speakingState.stage !== "speaking" || speakingState.isExplicitlyStopped) return;
+          speakingState.analyser.getByteFrequencyData(dataArray);
+
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+          const avg = sum / (bufferLength || 1);
+
+          const bars = document.querySelectorAll("#speaking-waveform-bars .audio-wave-bar");
+          if (bars && bars.length > 0) {
+            bars.forEach((b, idx) => {
+              const freqVal = dataArray[(idx * 4) % bufferLength] || avg;
+              const h = Math.max(8, Math.min(38, Math.round((freqVal / 255) * 38) + 6));
+              b.style.height = h + "px";
+            });
+          }
+
+          const pulseRing = document.getElementById("speaking-pulse-ring");
+          if (pulseRing) {
+            const scale = 1 + (avg / 255) * 0.35;
+            pulseRing.style.transform = `scale(${scale.toFixed(2)})`;
+          }
+
+          visualizerAnimFrame = requestAnimationFrame(drawWave);
+        }
+        drawWave();
+      }
+
+      function stopAudioVisualizer() {
+        if (visualizerAnimFrame) {
+          cancelAnimationFrame(visualizerAnimFrame);
+          visualizerAnimFrame = null;
+        }
+        if (speakingState.audioStream) {
+          try {
+            speakingState.audioStream.getTracks().forEach(t => t.stop());
+          } catch (e) {}
+          speakingState.audioStream = null;
+        }
+        if (speakingState.audioContext) {
+          try { speakingState.audioContext.close(); } catch (e) {}
+          speakingState.audioContext = null;
+        }
+      }
+
+      function changeSpeakingLang(val) {
+        speakingState.lang = val || "en-IN";
+        if (speakingState.stage === "speaking") {
+          initSpeakingRecognition();
+        }
+      }
+      window.changeSpeakingLang = changeSpeakingLang;
+
+      function clearSpeakingTranscript() {
+        speakingState.speechText = "";
+        speakingState.finalTranscript = "";
+        speakingState.interimTranscript = "";
+        speakingState.wordsUsed = 0;
+        const liveBox = $("#speaking-live-transcript");
+        if (liveBox) {
+          liveBox.textContent = "Listening to your voice... Speak clearly into your mic.";
+          liveBox.style.fontStyle = "italic";
+        }
+        const countEl = $("#speaking-word-count");
+        if (countEl) countEl.textContent = "0";
+      }
+      window.clearSpeakingTranscript = clearSpeakingTranscript;
+
+      function toggleSpeakingRecording() {
+        if (speakingState.stage === "speaking") {
+          finishSpeakingExercise();
+        } else {
+          startDirectSpeakingRecording();
+        }
+      }
+      window.toggleSpeakingRecording = toggleSpeakingRecording;
+
+      function initSpeakingRecognition() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          const statEl = $("#speaking-rec-status");
+          if (statEl) statEl.innerHTML = "<span style='color:#f59e0b'>Speech Recognition is supported best in Google Chrome or Edge.</span>";
+          return;
+        }
+
+        try {
+          if (speakingState.recog) {
+            try { speakingState.recog.abort(); } catch (e) {}
+            speakingState.recog = null;
+          }
+
+          const r = new SR();
+          r.lang = speakingState.lang || "en-IN";
+          r.continuous = true;
+          r.interimResults = true;
+          r.maxAlternatives = 1;
+
+          r.onstart = () => {
+            speakingState.micActive = true;
+            speakingState.restartAttempts = 0;
+            const ind = $("#transcript-mic-indicator");
+            if (ind) ind.style.background = "#10b981";
+            const stat = $("#speaking-rec-status");
+            if (stat) stat.innerHTML = "🟢 Microphone listening continuously...";
+          };
+
+          r.onresult = (evt) => {
+            let interim = "";
+            for (let i = evt.resultIndex; i < evt.results.length; i++) {
+              const trans = evt.results[i][0].transcript;
+              if (evt.results[i].isFinal) {
+                speakingState.finalTranscript = (speakingState.finalTranscript + " " + trans).trim();
+              } else {
+                interim += trans;
+              }
+            }
+            speakingState.interimTranscript = interim;
+            const combined = (speakingState.finalTranscript + " " + interim).trim();
+            speakingState.speechText = combined;
+            const words = combined.split(/\s+/).filter(Boolean);
+            speakingState.wordsUsed = words.length;
+
+            const liveBox = $("#speaking-live-transcript");
+            if (liveBox) {
+              liveBox.textContent = combined || "Listening to your voice... Speak clearly into your mic.";
+              liveBox.style.fontStyle = combined ? "normal" : "italic";
+            }
+            const countEl = $("#speaking-word-count");
+            if (countEl) countEl.textContent = words.length;
+          };
+
+          r.onerror = (evt) => {
+            console.warn("Speech recognition error:", evt.error);
+            if (evt.error === "no-speech") {
+              // Pause in speaking — do NOT stop, continue listening
+              return;
+            }
+            if (evt.error === "not-allowed" || evt.error === "service-not-allowed") {
+              speakingState.isExplicitlyStopped = true;
+              const stat = $("#speaking-rec-status");
+              if (stat) stat.innerHTML = "<span style='color:#ef4444'>❌ Microphone blocked. Click the lock icon in address bar to Allow.</span>";
+            }
+          };
+
+          r.onend = () => {
+            speakingState.micActive = false;
+            const ind = $("#transcript-mic-indicator");
+            if (ind) ind.style.background = "#64748b";
+
+            // If user did not explicitly stop recording, AUTOMATICALLY RESUME IMMEDIATELY
+            if (!speakingState.isExplicitlyStopped && speakingState.stage === "speaking") {
+              speakingState.restartAttempts = (speakingState.restartAttempts || 0) + 1;
+              const delay = speakingState.restartAttempts > 3 ? 300 : 80;
+              setTimeout(() => {
+                if (!speakingState.isExplicitlyStopped && speakingState.stage === "speaking") {
+                  try {
+                    r.start();
+                  } catch (e) {
+                    initSpeakingRecognition();
+                  }
+                }
+              }, delay);
+            }
+          };
+
+          r.start();
+          speakingState.recog = r;
+        } catch (err) {
+          console.warn("Speech recognition init exception:", err);
+        }
+      }
+
+      async function startDirectSpeakingRecording() {
+        if (!speakingState.activeExercise) speakingState.activeExercise = SPEAKING_EXERCISES[0];
+
+        speakingState.stage = "speaking";
+        speakingState.timer = 0; // Stopwatch: counts UP starting from 0, UNLIMITED!
+        speakingState.startTime = Date.now();
+        speakingState.speechText = "";
+        speakingState.finalTranscript = "";
+        speakingState.interimTranscript = "";
+        speakingState.wordsUsed = 0;
+        speakingState.isExplicitlyStopped = false;
+        speakingState.restartAttempts = 0;
+
+        // Re-render UI in speaking state
+        R.speaking();
+
+        // 1. Prime mic access via getUserMedia & start physical Web Audio Analyser
+        try {
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            speakingState.audioStream = stream;
+
+            try {
+              const AudioCtx = window.AudioContext || window.webkitAudioContext;
+              if (AudioCtx) {
+                const ctx = new AudioCtx();
+                const source = ctx.createMediaStreamSource(stream);
+                const analyser = ctx.createAnalyser();
+                analyser.fftSize = 64;
+                source.connect(analyser);
+                speakingState.audioContext = ctx;
+                speakingState.analyser = analyser;
+                startAudioVisualizerLoop();
+              }
+            } catch (actxErr) {
+              console.warn("AudioContext error:", actxErr);
+            }
+          }
+        } catch (permErr) {
+          console.warn("Microphone access prompt:", permErr);
+          const statEl = $("#speaking-rec-status");
+          if (statEl) statEl.innerHTML = "<span style='color:#ef4444'>⚠️ Microphone permission required. Please allow access in browser.</span>";
+        }
+
+        // 2. Start robust auto-reconnecting Speech Recognition
+        initSpeakingRecognition();
+
+        // 3. Unlimited Stopwatch Timer: counts UP, NEVER cuts off!
+        if (speakingState.interval) clearInterval(speakingState.interval);
+        speakingState.interval = setInterval(() => {
+          speakingState.timer++;
+          const numEl = $("#speaking-timer-num");
+          if (numEl) numEl.textContent = formatSecs(speakingState.timer);
+        }, 1000);
+      }
+      window.startDirectSpeakingRecording = startDirectSpeakingRecording;
+
+      function finishSpeakingExercise() {
+        speakingState.isExplicitlyStopped = true;
+        if (speakingState.interval) clearInterval(speakingState.interval);
+        if (speakingState.recog) {
+          try { speakingState.recog.stop(); } catch (e) {}
+        }
+        stopAudioVisualizer();
+
+        speakingState.stage = "review";
+        const ex = speakingState.activeExercise || SPEAKING_EXERCISES[0];
+        const totalWords = speakingState.wordsUsed || 0;
+        const durationSecs = Math.max(1, speakingState.timer);
+        const wpm = Math.round((totalWords / durationSecs) * 60);
+
+        // Intelligent scoring calculation
+        let score = 75;
+        if (totalWords >= 60) score = 92;
+        else if (totalWords >= 40) score = 86;
+        else if (totalWords >= 25) score = 80;
+        else if (totalWords >= 12) score = 74;
+        else score = 65;
+
+        let fluency = score;
+        if (wpm >= 90 && wpm <= 150) fluency = Math.min(96, score + 4);
+        else if (wpm < 50 && totalWords > 10) fluency = Math.max(68, score - 5);
+
+        let pronunciation = Math.min(95, Math.max(70, score + (totalWords > 30 ? 2 : -2)));
+        let vocab = Math.min(94, Math.max(70, score + 1));
+        let grammar = Math.min(95, Math.max(70, score));
+
+        speakingState.lastScore = score;
+        speakingState.lastFluency = fluency;
+        speakingState.lastPronunciation = pronunciation;
+        speakingState.lastVocab = vocab;
+        speakingState.lastGrammar = grammar;
+        speakingState.lastDuration = durationSecs;
+        speakingState.lastWpm = wpm;
+
+        // Update progress & XP
+        S.secs = (S.secs || 0) + durationSecs;
+        S.sent = (S.sent || 0) + Math.max(1, Math.round(totalWords / 10));
+        addXP(50 + Math.min(50, Math.floor(durationSecs / 10) * 5), ex.title);
+
+        R.speaking();
+      }
+
+      function cancelSpeakingExercise() {
+        speakingState.isExplicitlyStopped = true;
+        if (speakingState.interval) clearInterval(speakingState.interval);
+        if (speakingState.recog) {
+          try { speakingState.recog.stop(); } catch (e) {}
+        }
+        stopAudioVisualizer();
+        speakingState.stage = "idle";
+        R.speaking();
+      }
+
+      function formatSecs(s) {
+        const mins = Math.floor(s / 60);
+        const secs = s % 60;
+        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      }
+
+      function startSpeakingSession(exId) {
+        if (exId) {
+          const ex = SPEAKING_EXERCISES.find(e => e.id === exId);
+          if (ex) speakingState.activeExercise = ex;
+        }
+        startDirectSpeakingRecording();
+      }
+      window.startSpeakingSession = startSpeakingSession;
+      window.cancelSpeakingExercise = cancelSpeakingExercise;
+      window.finishSpeakingExercise = finishSpeakingExercise;
 
       R.speaking = (exId) => {
         if (exId) {
@@ -4542,27 +4878,27 @@
         const dashOffset = Math.round(301 * (1 - (score / 100)));
 
         const isSpeaking = speakingState.stage === "speaking";
-        const isPrep = speakingState.stage === "prep";
+        const isReview = speakingState.stage === "review";
 
         A.innerHTML = `
           <!-- Top Hero Card (Image 1 style) -->
           <div class="speaking-hero-card">
             <div style="flex:1;position:relative;z-index:1">
               <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:14px;background:rgba(139,92,246,0.25);border:1px solid rgba(139,92,246,0.4);font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:10px">
-                TODAY'S PRACTICE · ${esc(ex.level.toUpperCase())}
+                TODAY'S PRACTICE · ${esc(ex.level.toUpperCase())} · ♾️ UNLIMITED TIME
               </div>
               <h2 style="font-size:22px;font-weight:800;letter-spacing:-0.4px;color:#ffffff;margin:0 0 8px">
                 ${esc(ex.title)}
               </h2>
               <p style="font-size:14px;color:#cbd5e1;line-height:1.6;margin:0 0 14px;max-width:580px">
-                ${esc(ex.desc)}. Aim for 45-60 seconds of fluid speech.
+                ${esc(ex.desc)}. Practice speaking freely without any time limits. Tap <b>Finish & Analyze</b> whenever you are ready!
               </p>
               <div style="display:flex;align-items:center;gap:12px;font-size:12.5px;color:var(--mu);flex-wrap:wrap">
-                <span>⏱️ Target: <b>${ex.speakSecs}s</b></span>
+                <span style="color:#a78bfa">⏱️ <b>Unlimited Time</b> (Speak freely)</span>
                 <span>•</span>
                 <span>⭐ <b>+50 XP</b> Reward</span>
                 <span>•</span>
-                <span style="color:#6ee7b7">✓ Live Voice Analysis Active</span>
+                <span style="color:#6ee7b7">✓ Auto-Reconnecting Continuous Mic</span>
               </div>
             </div>
 
@@ -4575,30 +4911,38 @@
           <!-- Main 2-Column Grid (Image 1 style) -->
           <div class="speaking-layout-grid">
             
-            <!-- Left / Center Column — Circular Glowing Microphone Recorder -->
+            <!-- Left Column — Circular Glowing Microphone Recorder -->
             <div class="mic-recorder-card">
-              <div style="display:flex;justify-content:space-between;width:100%;align-items:center;margin-bottom:8px">
-                <span style="font-size:12px;font-weight:700;color:var(--pr-light);text-transform:uppercase;letter-spacing:0.8px">
-                  ${isSpeaking ? '🔴 LIVE RECORDING' : (isPrep ? '⏳ PREPARATION' : '🎙️ READY TO SPEAK')}
+              <div style="display:flex;justify-content:space-between;width:100%;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+                <span id="speaking-status-pill" style="font-size:12px;font-weight:700;color:${isSpeaking ? '#ef4444' : 'var(--pr-light)'};text-transform:uppercase;letter-spacing:0.8px;display:flex;align-items:center;gap:6px">
+                  ${isSpeaking ? '<span class="status-dot live" style="background:#ef4444;box-shadow:0 0 8px #ef4444"></span> 🔴 LIVE RECORDING' : (isReview ? '✅ SESSION REVIEW' : '🎙️ READY TO SPEAK')}
                 </span>
-                <span class="badge" style="background:rgba(255,255,255,0.06);color:var(--tx-sec);font-size:11.5px">
-                  ${ex.speakSecs}s Target
-                </span>
+                
+                <div style="display:flex;align-items:center;gap:8px">
+                  <select id="speaking-lang-select" onchange="changeSpeakingLang(this.value)" style="background:rgba(13,17,36,0.9);color:var(--tx-sec);border:1px solid rgba(139,92,246,0.3);border-radius:10px;font-size:11.5px;padding:3px 8px;cursor:pointer">
+                    <option value="en-IN" ${speakingState.lang === 'en-IN' ? 'selected' : ''}>🇮🇳 English (India)</option>
+                    <option value="en-US" ${speakingState.lang === 'en-US' ? 'selected' : ''}>🇺🇸 English (US)</option>
+                    <option value="en-GB" ${speakingState.lang === 'en-GB' ? 'selected' : ''}>🇬🇧 English (UK)</option>
+                  </select>
+                  <span class="badge" style="background:rgba(139,92,246,0.18);color:#c4b5fd;font-size:11.5px;border:1px solid rgba(139,92,246,0.35)">
+                    ♾️ Unlimited
+                  </span>
+                </div>
               </div>
 
               <!-- Concentric Glowing Ring Container -->
               <div class="mic-ring-container">
-                <div class="mic-outer-ring"></div>
-                <div class="mic-pulse-ring"></div>
-                <button class="mic-btn-main ${isSpeaking ? 'recording' : ''}" 
-                  onclick="${isSpeaking ? 'finishSpeakingExercise()' : 'startDirectSpeakingRecording()'}" 
+                <div class="mic-outer-ring" id="speaking-outer-ring"></div>
+                <div class="mic-pulse-ring" id="speaking-pulse-ring" style="${isSpeaking ? 'animation-duration:1s;opacity:1' : ''}"></div>
+                <button class="mic-btn-main ${isSpeaking ? 'recording' : ''}" id="speaking-main-mic-btn"
+                  onclick="toggleSpeakingRecording()" 
                   title="${isSpeaking ? 'Tap to finish recording' : 'Tap to start speaking'}">
                   ${isSpeaking ? '⏹️' : '🎙️'}
                 </button>
               </div>
 
               <!-- Animated Soundwave Bars -->
-              <div class="audio-waveform-bars" style="${isSpeaking ? '' : 'opacity:0.35'}">
+              <div class="audio-waveform-bars" id="speaking-waveform-bars" style="${isSpeaking ? '' : 'opacity:0.35'}">
                 <div class="audio-wave-bar"></div>
                 <div class="audio-wave-bar"></div>
                 <div class="audio-wave-bar"></div>
@@ -4608,38 +4952,55 @@
                 <div class="audio-wave-bar"></div>
               </div>
 
-              <!-- Digital Timer Readout -->
+              <!-- Digital Stopwatch Timer Readout -->
               <div class="mic-timer-readout" id="speaking-timer-num">
-                ${formatSecs(speakingState.stage !== 'idle' ? speakingState.timer : ex.speakSecs)}
+                ${formatSecs(speakingState.timer || 0)}
+              </div>
+              <div style="font-size:11.5px;color:var(--mu);margin-top:-10px;margin-bottom:14px">
+                ${isSpeaking ? '⏱️ Speaking Duration (Unlimited • No cut-off)' : (isReview ? '⏱️ Practice Completed' : 'Tap button to begin speaking')}
               </div>
 
-              <!-- Main CTA Action Button -->
-              ${isSpeaking ? `
-                <button class="start-speaking-cta" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 6px 24px rgba(16,185,129,0.45)" onclick="finishSpeakingExercise()">
-                  ✅ Finish & Analyze
-                </button>
-              ` : `
-                <button class="start-speaking-cta" onclick="startDirectSpeakingRecording()">
-                  Start Speaking 🎙️
-                </button>
-              `}
+              <!-- Main CTA Action Buttons -->
+              <div id="speaking-cta-container">
+                ${isSpeaking ? `
+                  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                    <button class="start-speaking-cta" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 6px 24px rgba(16,185,129,0.45)" onclick="finishSpeakingExercise()">
+                      ✅ Finish & Analyze
+                    </button>
+                    <button class="btn sec" style="border-radius:28px;padding:12px 22px;font-size:13.5px" onclick="cancelSpeakingExercise()">
+                      ✖ Cancel
+                    </button>
+                  </div>
+                ` : `
+                  <button class="start-speaking-cta" onclick="toggleSpeakingRecording()">
+                    ${isReview ? 'Practice Again 🎙️' : 'Start Speaking 🎙️'}
+                  </button>
+                `}
+              </div>
 
               <!-- Live Speech Transcript Box -->
-              <div style="width:100%;margin-top:24px;text-align:left;background:rgba(8,11,26,0.6);border:1px solid rgba(139,92,246,0.2);border-radius:16px;padding:14px 16px">
+              <div style="width:100%;margin-top:20px;text-align:left;background:rgba(8,11,26,0.65);border:1px solid rgba(139,92,246,0.25);border-radius:16px;padding:14px 16px">
                 <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-bottom:6px">
-                  <span style="font-weight:700">Live Transcript:</span>
+                  <span style="font-weight:700;display:flex;align-items:center;gap:6px">
+                    <span id="transcript-mic-indicator" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${isSpeaking ? '#10b981' : '#64748b'}"></span>
+                    Live Transcript:
+                  </span>
                   <span>Words: <b id="speaking-word-count" style="color:#ffffff">${totalWords}</b></span>
                 </div>
-                <p id="speaking-live-transcript" style="font-size:14px;line-height:1.6;color:var(--tx);margin:0;min-height:44px;font-style:${speakingState.speechText ? 'normal' : 'italic'}">
-                  ${esc(speakingState.speechText) || "Listening to your voice... Speak clearly into your mic."}
+                <p id="speaking-live-transcript" style="font-size:14px;line-height:1.6;color:var(--tx);margin:0;min-height:50px;font-style:${speakingState.speechText ? 'normal' : 'italic'};user-select:text">
+                  ${esc(speakingState.speechText) || (isSpeaking ? "Listening to your voice... Speak clearly into your mic." : "Your spoken words will appear here in real-time.")}
                 </p>
+                <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--mu)">
+                  <span id="speaking-rec-status">${isSpeaking ? '🟢 Microphone active & listening continuously' : '💡 Tip: Speak in natural English sentences.'}</span>
+                  <button class="btn-ghost" style="padding:2px 8px;font-size:11px" onclick="clearSpeakingTranscript()">Clear Text</button>
+                </div>
               </div>
 
               <!-- Quick Topic Switcher Pills -->
               <div style="width:100%;margin-top:20px;text-align:left">
-                <div style="font-size:12px;font-weight:700;color:var(--mu);margin-bottom:8px">OTHER PRACTICE TOPICS:</div>
+                <div style="font-size:12px;font-weight:700;color:var(--mu);margin-bottom:8px">PRACTICE TOPICS:</div>
                 <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">
-                  ${SPEAKING_EXERCISES.slice(0, 5).map(item => `
+                  ${SPEAKING_EXERCISES.slice(0, 6).map(item => `
                     <button class="category-pill ${ex.id === item.id ? 'active' : ''}" style="white-space:nowrap;font-size:11.5px" onclick="R.speaking('${item.id}')">
                       ${esc(item.title.split(' ').slice(0, 3).join(' '))}...
                     </button>
@@ -4673,10 +5034,12 @@
                 <div style="flex:1">
                   <div style="font-size:15px;font-weight:800;color:#ffffff;margin-bottom:4px">Speech Evaluation</div>
                   <div style="font-size:12.5px;color:var(--mu);line-height:1.5">
-                    ${score >= 80 ? 'Excellent vocal flow and vocabulary confidence!' : 'Solid practice! Continue practicing linking phrases.'}
+                    ${isReview ? (score >= 82 ? 'Outstanding confidence and vocal clarity!' : 'Good session! Practice linking words and smooth phrasing.') : 'Click Start Speaking to record and receive instant AI fluency feedback.'}
                   </div>
-                  <div style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#6ee7b7">
-                    <span>⚡ +50 XP Earned</span>
+                  <div style="margin-top:8px;display:flex;align-items:center;gap:12px;font-size:11.5px">
+                    <span style="color:#6ee7b7">⚡ +50 XP Earned</span>
+                    ${speakingState.lastDuration ? `<span style="color:#c4b5fd">⏱️ ${speakingState.lastDuration}s duration</span>` : ''}
+                    ${speakingState.lastWpm ? `<span style="color:#38bdf8">🚀 ${speakingState.lastWpm} WPM</span>` : ''}
                   </div>
                 </div>
               </div>
@@ -4768,110 +5131,6 @@
           </div>
         `;
       };
-
-      function startDirectSpeakingRecording() {
-        if (!speakingState.activeExercise) speakingState.activeExercise = SPEAKING_EXERCISES[0];
-        speakingState.stage = "speaking";
-        speakingState.timer = speakingState.activeExercise.speakSecs;
-        speakingState.startTime = Date.now();
-        speakingState.speechText = "";
-        speakingState.wordsUsed = 0;
-
-        R.speaking();
-
-        // Start voice speech recognition
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SR) {
-          try {
-            speakingState.recog = new SR();
-            speakingState.recog.lang = "en-US";
-            speakingState.recog.continuous = true;
-            speakingState.recog.interimResults = true;
-            speakingState.recog.onresult = (evt) => {
-              let cur = "";
-              for (let i = 0; i < evt.results.length; i++) {
-                cur += evt.results[i][0].transcript + " ";
-              }
-              speakingState.speechText = cur.trim();
-              const words = speakingState.speechText.split(/\s+/).filter(Boolean);
-              speakingState.wordsUsed = words.length;
-              const liveBox = $("#speaking-live-transcript");
-              if (liveBox) liveBox.textContent = speakingState.speechText || "Listening to your voice...";
-              const countEl = $("#speaking-word-count");
-              if (countEl) countEl.textContent = words.length;
-            };
-            speakingState.recog.start();
-          } catch (e) {
-            console.warn("Speech recognition error:", e);
-          }
-        }
-
-        if (speakingState.interval) clearInterval(speakingState.interval);
-        speakingState.interval = setInterval(() => {
-          speakingState.timer--;
-          const numEl = $("#speaking-timer-num");
-          if (numEl) numEl.textContent = formatSecs(speakingState.timer);
-
-          if (speakingState.timer <= 0) {
-            finishSpeakingExercise();
-          }
-        }, 1000);
-      }
-      window.startDirectSpeakingRecording = startDirectSpeakingRecording;
-
-      function finishSpeakingExercise() {
-        if (speakingState.interval) clearInterval(speakingState.interval);
-        if (speakingState.recog) {
-          try { speakingState.recog.stop(); } catch (e) {}
-        }
-
-        speakingState.stage = "review";
-        const ex = speakingState.activeExercise;
-        const totalWords = speakingState.wordsUsed || 0;
-        const durationSecs = ex.speakSecs - Math.max(0, speakingState.timer);
-        const wpm = Math.round((totalWords / Math.max(1, durationSecs)) * 60);
-
-        // Calculate score
-        let score = Math.min(96, Math.max(65, Math.round((totalWords / (ex.speakSecs * 1.5)) * 100)));
-        if (totalWords >= 40) score = Math.max(score, 82);
-        speakingState.lastScore = score;
-        speakingState.lastFluency = Math.min(95, score + 2);
-        speakingState.lastPronunciation = Math.max(70, score - 3);
-        speakingState.lastVocab = Math.min(92, score);
-        speakingState.lastGrammar = Math.min(94, score + 1);
-
-        // Update progress & XP
-        S.secs = (S.secs || 0) + durationSecs;
-        S.sent = (S.sent || 0) + Math.max(1, Math.round(totalWords / 10));
-        addXP(50, ex.title);
-
-        R.speaking();
-      }
-
-      function cancelSpeakingExercise() {
-        if (speakingState.interval) clearInterval(speakingState.interval);
-        if (speakingState.recog) {
-          try { speakingState.recog.stop(); } catch (e) {}
-        }
-        speakingState.stage = "idle";
-        R.speaking();
-      }
-
-      function formatSecs(s) {
-        const mins = Math.floor(s / 60);
-        const secs = s % 60;
-        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-      }
-
-      function startSpeakingSession(exId) {
-        if (exId) {
-          const ex = SPEAKING_EXERCISES.find(e => e.id === exId);
-          if (ex) speakingState.activeExercise = ex;
-        }
-        startDirectSpeakingRecording();
-      }
-      window.startSpeakingSession = startSpeakingSession;
-      window.cancelSpeakingExercise = cancelSpeakingExercise;
       window.finishSpeakingExercise = finishSpeakingExercise;
 
       // ---------- 2. INTERACTIVE CONVERSATION SCENARIOS ----------

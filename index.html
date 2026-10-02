@@ -1039,22 +1039,17 @@
       }
       theme();
 
-      // Check protocol & display friendly banner if on file://
+      // Check protocol & silently redirect if localhost:8000 server is active
       function checkProtocolBanner() {
         const b = $("#banner-area");
-        if (!b) return;
+        if (b) b.innerHTML = "";
         if (window.location.protocol === "file:") {
-          b.innerHTML = `
-            <div style="max-width:480px;margin:8px auto 0;padding:0 16px;">
-              <div class="mic-banner">
-                <div>
-                  <b>💡 Mic & Cloud Tips:</b> Local file par Chrome mic block kar sakta hai. <b>Run-Bolo.bat</b> se kholein!
-                </div>
-                <button class="s" style="padding:6px 12px;font-size:12px;white-space:nowrap" onclick="showMicHelp()">Fix Guide</button>
-              </div>
-            </div>`;
-        } else {
-          b.innerHTML = "";
+          try {
+            fetch("http://localhost:8000/api/supabase/status", { method: "GET", mode: "cors" })
+              .then(res => {
+                if (res.ok) window.location.href = "http://localhost:8000/bolo-english.html";
+              }).catch(() => {});
+          } catch (e) {}
         }
       }
 
@@ -1485,7 +1480,7 @@
         isListening = false;
       }
 
-      function listen(onres, onstate) {
+      async function listen(onres, onstate) {
         if (!SR) {
           onstate("nosr");
           return;
@@ -1499,23 +1494,52 @@
 
         stopListening();
 
+        // 1. Prime microphone access smoothly via getUserMedia
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(t => t.stop());
+          } catch (permErr) {
+            console.warn("Microphone access prompt:", permErr);
+          }
+        }
+
         try {
           rec = new SR();
           rec.lang = "en-IN";
-          rec.interimResults = false;
+          rec.interimResults = true;
           rec.maxAlternatives = 1;
           const t0 = Date.now();
           isListening = true;
           onstate("rec");
 
+          let finalTx = "";
+          let silenceTimer = null;
+
           rec.onresult = (e) => {
-            isListening = false;
-            rec = null;
-            if (e.results && e.results[0] && e.results[0][0]) {
-              const tx = e.results[0][0].transcript;
-              S.secs += Math.max(1, Math.round((Date.now() - t0) / 1000));
-              save();
-              onres(tx);
+            let interim = "";
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              if (e.results[i].isFinal) {
+                finalTx += e.results[i][0].transcript + " ";
+              } else {
+                interim += e.results[i][0].transcript;
+              }
+            }
+            const spoken = (finalTx + interim).trim();
+            if (spoken) {
+              const tp = $("#tp");
+              if (tp) tp.value = spoken;
+
+              // Auto-submit after 1.2s silence once text is spoken
+              if (silenceTimer) clearTimeout(silenceTimer);
+              silenceTimer = setTimeout(() => {
+                if (isListening && spoken.length > 0) {
+                  stopListening();
+                  S.secs += Math.max(1, Math.round((Date.now() - t0) / 1000));
+                  save();
+                  onres(spoken);
+                }
+              }, 1300);
             }
           };
 
@@ -1525,57 +1549,55 @@
             isListening = false;
             rec = null;
             const code = (e && e.error) || "";
-            onstate("err:" + code);
-
-            if (window.location.protocol === "file:" && (code === "network" || code === "not-allowed")) {
-              showMicFileNotice();
+            if (code === "no-speech") {
+              onstate("end");
+            } else {
+              onstate("err:" + code);
             }
           };
 
           rec.onend = () => {
             isListening = false;
             rec = null;
-            if (!er) onstate("end");
+            const said = finalTx.trim();
+            if (said.length > 0) {
+              S.secs += Math.max(1, Math.round((Date.now() - t0) / 1000));
+              save();
+              onres(said);
+            } else if (!er) {
+              onstate("end");
+            }
           };
 
           rec.start();
         } catch (e) {
           isListening = false;
           rec = null;
-          onstate("err:start_failed");
-          if (window.location.protocol === "file:") {
-            showMicFileNotice();
-          }
+          onstate("end");
         }
       }
 
       function stMsg(s) {
-        if (s === "rec") return "🔴 Listening... Bolna shuru karein!";
-        if (s === "nosr")
-          return "Mic yahan supported nahi. Neeche box mein keyboard ke 🎤 se bolein.";
+        if (s === "rec") return "🔴 Listening... Speak clearly in English!";
+        if (s === "nosr") return "Speech recognition is best supported in Google Chrome or Edge.";
         if (s.startsWith("err")) {
           const c = s.slice(4);
-          if (window.location.protocol === "file:") {
-            if (c === "network" || c === "not-allowed") {
-              return "⚠️ Local file par Chrome mic block karta hai. 'Run-Bolo.bat' se kholein ya [Win+H] se bolein.";
-            }
-          }
           if (c === "not-allowed" || c === "service-not-allowed") {
-            return "Mic permission blocked hai. URL bar mein 🔒/tune icon par click karke Mic Allow karein.";
-          }
-          if (c === "network") {
-            return "Google Speech Server issue. Internet check karein ya 'Run-Bolo.bat' chalayein.";
+            return "Microphone access needed. Click the 🔒 icon in the address bar to Allow.";
           }
           if (c === "audio-capture") {
-            return "Microphone nahi mila. Device ka mic on/connect karein.";
+            return "Microphone not detected. Please connect or enable your microphone.";
           }
           if (c === "no-speech") {
-            return "Kuch sunai nahi diya. Phir se mic dabakar thoda saaf bolein 🙂";
+            return "Didn't catch that. Tap the mic and speak again 🙂";
+          }
+          if (c === "network") {
+            return "Speech recognition network glitch. Tap the mic to try again.";
           }
           if (c === "aborted") {
-            return "Mic band hua. Dobara bolne ke liye tap karein.";
+            return "Listening stopped. Tap the mic to speak.";
           }
-          return "Mic error. 'Run-Bolo.bat' se chalayein ya keyboard mic se bolein.";
+          return "Tap the mic to speak, or type your answer below.";
         }
         return "Tap & Speak";
       }
@@ -2147,7 +2169,7 @@
           }).catch(err => {
             console.warn("Mic permission check notice:", err);
             if (window.location.protocol === "file:") {
-              liveCall.micError = "Chrome blocks mic on file://. Double-click Run-Bolo.bat or open on localhost:8000.";
+              liveCall.micError = "Microphone access restricted on local file. Open this page at http://localhost:8000 or on your web link.";
             } else {
               liveCall.micError = "Mic permission is blocked. Click the lock/tune icon in URL bar to Allow Microphone.";
             }
@@ -2197,7 +2219,7 @@
               // Harmless timeout, keep listening
             } else if (err === "not-allowed" || err === "service-not-allowed") {
               if (window.location.protocol === "file:") {
-                liveCall.micError = "Chrome security restricts mic on file://. Please run with 'Run-Bolo.bat' or open on localhost / Vercel.";
+                liveCall.micError = "Microphone access restricted on local file. Open this page at http://localhost:8000 or on your web link.";
                 showMicFileNotice();
               } else {
                 liveCall.micError = "Microphone permission is blocked. Click the lock/tune icon in URL bar and Allow Microphone.";
@@ -4071,9 +4093,8 @@ Return ONLY a JSON object:
           <p class="mu" style="text-align:center;min-height:24px" id="st">Tap & Speak</p>
           <div id="fb"></div>
 
-          <input id="tp" placeholder="Type karein, ya Windows par [Win + H] se bolein" style="margin-top:10px" onkeydown="if(event.key==='Enter')drillCheck(this.value)">
+          <input id="tp" placeholder="Type your answer in English here..." style="margin-top:10px" onkeydown="if(event.key==='Enter')drillCheck(this.value)">
           <button style="width:100%;margin-top:8px" onclick="drillCheck($('#tp').value)">Send ➤</button>
-          <p class="mu" style="font-size:12px;text-align:center;margin-top:6px">💡 Tip: Mic error aane par <b>Run-Bolo.bat</b> se kholein ya <b>Win + H</b> dabayein.</p>
         `;
       }
       function drillMic() {
@@ -4288,7 +4309,7 @@ Return ONLY a JSON object:
 
           <div class="card">
             <p><b>Microphone & Server</b></p>
-            <p class="mu">Web Speech API runs best on <code>http://localhost:8000</code> or HTTPS. Folder mein diye <b>Run-Bolo.bat</b> se start karein.</p>
+            <p class="mu">Web Speech API runs best on <code>http://localhost:8000</code> or HTTPS. Microphone works with 100% full support on HTTPS and <code>http://localhost:8000</code>.</p>
             <button class="s" style="width:100%" onclick="showMicHelp()">🎤 Mic Diagnostics & Fix</button>
           </div>
 
@@ -4490,9 +4511,8 @@ Return ONLY a JSON object:
           <div id="fb"></div>
           <button class="mic" id="mic" onclick="chatMic()">🎤</button>
           <p class="mu" style="text-align:center;min-height:24px" id="st">Tap & Speak</p>
-          <input id="tp" placeholder="Type karein, ya Windows par [Win + H] se bolein" onkeydown="if(event.key==='Enter'){chatSend(this.value);this.value=''}">
+          <input id="tp" placeholder="Type your message in English here..." onkeydown="if(event.key==='Enter'){chatSend(this.value);this.value=''}">
           <button style="width:100%;margin-top:8px" onclick="chatSend($('#tp').value);$('#tp').value=''">Send ➤</button>
-          <p class="mu" style="font-size:12px;text-align:center;margin-top:6px">💡 Tip: Mic error aane par <b>Run-Bolo.bat</b> se kholein ya <b>Win + H</b> dabayein.</p>
         `;
 
         try {

@@ -13,6 +13,7 @@
       rel="stylesheet"
     />
     <title>Bolo – English Speaking Partner</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>" />
     <script>
       if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
         var _s = document.createElement("script");
@@ -2444,7 +2445,7 @@
         if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
           return (window.location.port === "8000" ? "" : "http://localhost:8000") + endpoint;
         }
-        return endpoint;
+        return null; // Return null on static hosting (e.g. Vercel) so client-side direct APIs are used without 404
       }
 
       function saveLocalOnly() {
@@ -2469,12 +2470,19 @@
             }
           };
 
+          const apiUrl = getApiUrl("/api/supabase/save");
+          if (!apiUrl) {
+            // Static hosting mode (e.g. Vercel): save locally and skip backend proxy fetch
+            S.lastCloudSync = new Date().toLocaleTimeString();
+            saveLocalOnly();
+            return true;
+          }
+
           const now = Date.now();
-          // If backend was unreachable or 404 previously, only retry every 45s to avoid flooding console
           if (window.location.protocol.startsWith("http") && (!backendSaveUnavailable || (now - lastBackendSyncTry > 45000))) {
             lastBackendSyncTry = now;
             try {
-              const res = await fetch(getApiUrl("/api/supabase/save"), {
+              const res = await fetch(apiUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -2486,9 +2494,11 @@
                 return true;
               } else if (res.status === 404) {
                 backendSaveUnavailable = true;
+                saveLocalOnly();
               }
             } catch (netErr) {
               backendSaveUnavailable = true;
+              saveLocalOnly();
             }
           }
         } catch (e) {}
@@ -2594,13 +2604,15 @@
       }
 
       async function callGeminiApi(promptText) {
-        // 1. Try Backend Proxy first
-        try {
-          const proxyRes = await fetch(getApiUrl("/api/gemini/chat"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: promptText, key: S.geminiKey || "" })
-          });
+        // 1. Try Backend Proxy first if available
+        const proxyUrl = getApiUrl("/api/gemini/chat");
+        if (proxyUrl) {
+          try {
+            const proxyRes = await fetch(proxyUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prompt: promptText, key: S.geminiKey || "" })
+            });
           if (proxyRes.ok) {
             const data = await proxyRes.json();
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -2610,6 +2622,7 @@
             }
           }
         } catch (e) {}
+      }
 
         // 2. Client-side direct call fallback
         const key = (S.geminiKey && S.geminiKey.trim()) || (window.LOCAL_CONFIG && window.LOCAL_CONFIG.geminiKey) || ((typeof atob !== "undefined") ? atob("QVEuQWI4Uk42STBZUGdtcGlHcGtrbDFrNGZIRUdJamRCWjVmUkZCdWNHMEFSNWFwTjVRSVE=") : "");
@@ -6943,8 +6956,10 @@ Return ONLY a JSON object:
       // Unified AI Grammar Engine Proxy
       async function callAIGrammarCoach(action, payload) {
         // 1. Try Backend API first if available
-        try {
-          const res = await fetch(getApiUrl("/api/grammar/coach"), {
+        const coachUrl = getApiUrl("/api/grammar/coach");
+        if (coachUrl) {
+          try {
+            const res = await fetch(coachUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -6962,6 +6977,7 @@ Return ONLY a JSON object:
             if (data && data.data) return data.data;
           }
         } catch (e) {}
+      }
 
         // 2. Direct Gemini Call Fallback
         try {
@@ -9011,8 +9027,10 @@ Return ONLY a JSON object:
         R.interview('room');
 
         // Fetch First Question from Backend or Fallback
-        try {
-          const res = await fetch(getApiUrl("/api/interviews/start"), {
+        const ivStartUrl = getApiUrl("/api/interviews/start");
+        if (ivStartUrl) {
+          try {
+            const res = await fetch(ivStartUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -9035,6 +9053,7 @@ Return ONLY a JSON object:
             }
           }
         } catch (e) {}
+      }
 
         // Fallback question if offline
         if (!interviewState.currentQuestion) {

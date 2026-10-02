@@ -1111,6 +1111,577 @@
         color: #fca5a5;
         border: 1px solid rgba(239, 68, 68, 0.35);
       }
+    
+      /* =========================================================================
+         PREMIUM AI SAAS DESIGN SYSTEM - ENGLISH SPEAKING by BRAJESH KUSHWAHA
+         ========================================================================= */
+
+      /* App Container Responsiveness */
+      #app {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px 20px 120px;
+        min-height: calc(100vh - 80px);
+        transition: max-width 0.3s ease;
+      }
+      body.auth-mode #app {
+        max-width: 1180px;
+        padding: 16px 20px 60px;
+      }
+      @media (min-width: 1024px) {
+        #app {
+          max-width: 1040px;
+          padding: 28px 24px 130px;
+        }
+      }
+
+      /* Global Top SaaS Header */
+      .saas-header {
+        position: sticky;
+        top: 0;
+        z-index: 900;
+        width: 100%;
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        background: rgba(7, 10, 22, 0.82);
+        border-bottom: 1px solid rgba(139, 92, 246, 0.18);
+        box-shadow: 0 4px 30px -2px rgba(0, 0, 0, 0.55);
+        padding: 12px 24px;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+      }
+      .saas-header-inner {
+        max-width: 1140px;
+        margin: 0 auto;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+      .saas-brand-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .saas-logo-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #06b6d4 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.45);
+        position: relative;
+        flex-shrink: 0;
+      }
+      .saas-logo-icon::after {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.6), rgba(6, 182, 212, 0.6));
+        z-index: -1;
+        opacity: 0.6;
+        filter: blur(4px);
+      }
+      .saas-brand-title {
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: -0.3px;
+        margin: 0;
+        background: linear-gradient(135deg, #ffffff 40%, #c4b5fd 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1.2;
+      }
+      .saas-brand-author {
+        font-size: 11.5px;
+        color: var(--mu);
+        letter-spacing: 0.3px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .saas-brand-tag {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 10px;
+        background: rgba(139, 92, 246, 0.2);
+        color: #c4b5fd;
+        border: 1px solid rgba(139, 92, 246, 0.35);
+        font-weight: 700;
+      }
+      .saas-header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .saas-badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12.5px;
+        font-weight: 700;
+        backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        color: var(--tx);
+        transition: all 0.2s ease;
+      }
+      .saas-badge-pill:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(139, 92, 246, 0.3);
+      }
+      .saas-badge-pill.streak {
+        background: rgba(245, 158, 11, 0.12);
+        color: #fcd34d;
+        border-color: rgba(245, 158, 11, 0.3);
+      }
+      .saas-badge-pill.xp {
+        background: rgba(16, 185, 129, 0.12);
+        color: #6ee7b7;
+        border-color: rgba(16, 185, 129, 0.3);
+      }
+      .saas-badge-pill.cloud {
+        background: rgba(99, 102, 241, 0.12);
+        color: #a5b4fc;
+        border-color: rgba(99, 102, 241, 0.3);
+      }
+      .saas-auth-btn {
+        padding: 7px 16px;
+        font-size: 13px;
+        border-radius: 20px;
+        font-weight: 700;
+        background: rgba(139, 92, 246, 0.15);
+        color: #c4b5fd;
+        border: 1px solid rgba(139, 92, 246, 0.35);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+      }
+      .saas-auth-btn:hover {
+        background: rgba(139, 92, 246, 0.3);
+        border-color: #8b5cf6;
+        color: #fff;
+        box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+      }
+
+      /* Split-Screen Authentication Styles */
+      .auth-split-wrapper {
+        min-height: calc(100vh - 120px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 0;
+        width: 100%;
+      }
+      .auth-split-grid {
+        display: grid;
+        grid-template-columns: 1.18fr 1fr;
+        gap: 32px;
+        width: 100%;
+        max-width: 1140px;
+        margin: 0 auto;
+        align-items: stretch;
+      }
+      @media (max-width: 920px) {
+        .auth-split-grid {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+      }
+
+      /* Left Section — Branding & Visual Experience */
+      .auth-brand-pane {
+        background: linear-gradient(150deg, rgba(20, 26, 62, 0.85) 0%, rgba(10, 13, 30, 0.95) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.28);
+        border-radius: 28px;
+        padding: 44px 38px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 35px rgba(124, 58, 237, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+      }
+      .auth-brand-pane::before {
+        content: '';
+        position: absolute;
+        top: -120px;
+        left: -120px;
+        width: 320px;
+        height: 320px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .auth-brand-pane::after {
+        content: '';
+        position: absolute;
+        bottom: -100px;
+        right: -100px;
+        width: 280px;
+        height: 280px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .auth-brand-content {
+        position: relative;
+        z-index: 1;
+      }
+      .auth-brand-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 24px;
+      }
+      .auth-brand-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1 60%, #06b6d4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
+      }
+      .auth-headline {
+        font-size: 27px;
+        font-weight: 800;
+        letter-spacing: -0.6px;
+        line-height: 1.25;
+        margin: 0 0 14px;
+        background: linear-gradient(135deg, #ffffff 30%, #ddd6fe 70%, #a78bfa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .auth-subtext {
+        font-size: 14.5px;
+        line-height: 1.65;
+        color: #cbd5e1;
+        margin: 0 0 22px;
+        max-width: 480px;
+      }
+
+      /* Abstract AI Neural Network Visualizer */
+      .neural-network-box {
+        background: rgba(11, 15, 36, 0.65);
+        border: 1px solid rgba(139, 92, 246, 0.22);
+        border-radius: 20px;
+        padding: 16px 20px;
+        margin: 14px 0 24px;
+        position: relative;
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+      }
+      .neural-pulse-dot {
+        animation: pulseNeuralDot 3.2s infinite ease-in-out;
+      }
+      .neural-pulse-line {
+        stroke-dasharray: 6 6;
+        animation: dashNeuralLine 18s linear infinite;
+      }
+      @keyframes pulseNeuralDot {
+        0%, 100% { transform: scale(1); opacity: 0.85; filter: drop-shadow(0 0 4px #8b5cf6); }
+        50% { transform: scale(1.3); opacity: 1; filter: drop-shadow(0 0 12px #c084fc); }
+      }
+      @keyframes dashNeuralLine {
+        to { stroke-dashoffset: -200; }
+      }
+
+      /* Brand Feature Pill Badges */
+      .auth-feature-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 10px;
+      }
+      @media (max-width: 500px) {
+        .auth-feature-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .auth-feature-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(139, 92, 246, 0.16);
+        padding: 10px 14px;
+        border-radius: 14px;
+        font-size: 13px;
+        color: #e2e8f0;
+        backdrop-filter: blur(10px);
+        transition: all 0.25s ease;
+      }
+      .auth-feature-pill:hover {
+        background: rgba(139, 92, 246, 0.12);
+        border-color: rgba(139, 92, 246, 0.35);
+        transform: translateY(-2px);
+      }
+      .auth-brand-footer {
+        margin-top: 24px;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: var(--mu);
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Right Section — Authentication Card */
+      .auth-form-card {
+        background: rgba(14, 18, 42, 0.85);
+        backdrop-filter: blur(24px) saturate(190%);
+        -webkit-backdrop-filter: blur(24px) saturate(190%);
+        border: 1px solid rgba(139, 92, 246, 0.28);
+        border-radius: 28px;
+        padding: 38px 34px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(124, 58, 237, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+      }
+      .auth-form-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #8b5cf6, #06b6d4, transparent);
+      }
+      .auth-tabs {
+        display: flex;
+        background: rgba(9, 12, 28, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 4px;
+        margin-bottom: 22px;
+      }
+      .auth-tab-btn {
+        flex: 1;
+        padding: 9px 16px;
+        font-size: 13.5px;
+        font-weight: 700;
+        border: none;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--mu);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .auth-tab-btn.active {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(99, 102, 241, 0.35));
+        color: #fff;
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      }
+      .auth-field-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--tx-sec);
+        margin: 0 0 7px;
+        display: block;
+      }
+      .auth-input-wrapper {
+        position: relative;
+        margin-bottom: 16px;
+      }
+      .auth-input-wrapper .input-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 16px;
+        color: var(--mu);
+        pointer-events: none;
+      }
+      .auth-input-wrapper input, .auth-input-wrapper select {
+        width: 100%;
+        padding: 13px 44px 13px 44px;
+        border-radius: 14px;
+        background: rgba(8, 11, 26, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font-size: 14.5px;
+        outline: none;
+        box-sizing: border-box;
+        transition: all 0.25s ease;
+      }
+      .auth-input-wrapper input:focus, .auth-input-wrapper select:focus {
+        border-color: #8b5cf6;
+        background: rgba(12, 16, 38, 0.85);
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.22), 0 0 20px rgba(139, 92, 246, 0.15);
+      }
+      .auth-input-wrapper input::placeholder {
+        color: rgba(148, 163, 184, 0.6);
+      }
+      .auth-eye-btn {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: transparent;
+        border: none;
+        color: var(--mu);
+        cursor: pointer;
+        padding: 6px;
+        font-size: 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+      }
+      .auth-eye-btn:hover {
+        color: #c4b5fd;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .auth-options-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        margin-bottom: 20px;
+      }
+      .auth-remember-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--mu);
+        cursor: pointer;
+        user-select: none;
+      }
+      .auth-remember-label input[type="checkbox"] {
+        accent-color: #8b5cf6;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+      .auth-forgot-link {
+        color: #a78bfa;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: color 0.2s ease;
+      }
+      .auth-forgot-link:hover {
+        color: #c4b5fd;
+        text-decoration: underline;
+      }
+      .auth-primary-btn {
+        width: 100%;
+        padding: 14px 20px;
+        border-radius: 14px;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: -0.2px;
+        background: linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #06b6d4 100%);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 4px 20px rgba(124, 58, 237, 0.45);
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .auth-primary-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(124, 58, 237, 0.6);
+        filter: brightness(1.08);
+      }
+      .auth-primary-btn:active {
+        transform: translateY(0);
+      }
+      .auth-divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 20px 0;
+        color: rgba(148, 163, 184, 0.5);
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+      }
+      .auth-divider::before, .auth-divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .auth-divider:not(:empty)::before {
+        margin-right: 12px;
+      }
+      .auth-divider:not(:empty)::after {
+        margin-left: 12px;
+      }
+      .auth-demo-btn {
+        width: 100%;
+        padding: 12px 18px;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.04);
+        color: #e2e8f0;
+        border: 1px solid rgba(139, 92, 246, 0.22);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+      }
+      .auth-demo-btn:hover {
+        background: rgba(139, 92, 246, 0.14);
+        border-color: rgba(139, 92, 246, 0.45);
+        color: #fff;
+        transform: translateY(-1px);
+      }
+      .auth-trust-footer {
+        margin-top: 18px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--mu);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .auth-alert-box {
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 13px;
+        margin-bottom: 16px;
+        display: none;
+      }
+      .auth-alert-box.error {
+        background: rgba(239, 68, 68, 0.14);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        display: block;
+      }
+      .auth-alert-box.success {
+        background: rgba(16, 185, 129, 0.14);
+        color: #6ee7b7;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        display: block;
+      }
+
     </style>
   </head>
   <body>
@@ -1120,6 +1691,7 @@
       <div class="ambient-orb orb-cyan"></div>
       <div class="ambient-orb orb-purple"></div>
     </div>
+    <header id="top-header" class="saas-header" style="display:none"></header>
     <div id="banner-area"></div>
     <div id="app"></div>
     <nav id="nav"></nav>
@@ -1957,6 +2529,50 @@
 
       // ---------- UI helpers & routing ----------
       let view = "home";
+      function updateTopHeader() {
+        const h = $('#top-header');
+        if (!h) return;
+        if (view === 'splash' || view === 'login' || (typeof S !== 'undefined' && S.level < 0)) {
+          h.style.display = 'none';
+          document.body.classList.add('auth-mode');
+          return;
+        }
+        document.body.classList.remove('auth-mode');
+        h.style.display = 'block';
+
+        const userName = (typeof S !== 'undefined' && S.name) || 'Brajesh';
+        const userStreak = (typeof S !== 'undefined' && S.streak) || 3;
+        const userXp = (typeof S !== 'undefined' && S.xp) || 140;
+
+        h.innerHTML = `
+          <div class="saas-header-inner">
+            <div class="saas-brand-group" onclick="go('home')" title="Go to SaaS Dashboard">
+              <div class="saas-logo-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+              </div>
+              <div>
+                <div class="saas-brand-title">English Speaking</div>
+                <div class="saas-brand-author">by Brajesh Kushwaha <span class="saas-brand-tag">AI SaaS</span></div>
+              </div>
+            </div>
+
+            <div class="saas-header-right">
+              <span class="saas-badge-pill streak" title="${userStreak}-day speaking streak">🔥 ${userStreak}d Streak</span>
+              <span class="saas-badge-pill xp" title="Total experience points earned">⭐ ${userXp} XP</span>
+              <span class="saas-badge-pill cloud" title="Real-time sync to Supabase Cloud">☁️ Synced</span>
+              <button class="saas-auth-btn" onclick="logoutAuth()" title="Switch account or sign in">
+                <span>👤 ${esc(userName.split(' ')[0])}</span>
+                <span style="font-size:11px;opacity:0.7">✕</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
       function go(v, a) {
         if (v !== "live" && liveCall.active) {
           endLiveCall(false);
@@ -1970,6 +2586,7 @@
         }
         window.scrollTo(0, 0);
         nav();
+        updateTopHeader();
         checkProtocolBanner();
       }
       function nav() {
@@ -1984,7 +2601,8 @@
           ["prog", "📈", "Progress"],
           ["set", "⚙️", "Settings"],
         ];
-        $("#nav").style.display = S.level < 0 ? "none" : "flex";
+        const isAuthScreen = (view === "splash" || view === "login" || S.level < 0);
+        $("#nav").style.display = isAuthScreen ? "none" : "flex";
         $("#nav").innerHTML = t
           .map(
             (x) =>
@@ -2664,10 +3282,403 @@
       window.toggleLiveSpeed = toggleLiveSpeed;
       window.toggleLiveCaptions = toggleLiveCaptions;
 
-      // ---------- ONBOARDING & HOME ----------
+      // =========================================================================
+      // ---------- PREMIUM SPLIT-SCREEN AUTHENTICATION & LOGIN INTERFACE ----------
+      // =========================================================================
+      let authTab = "signin"; // "signin" | "signup"
+
       R.splash = () => {
-        A.innerHTML = `<div style="text-align:center;padding-top:20vh"><div style="font-size:70px">🗣️</div><h1>Bolo</h1><p class="mu">Tumhara personal English-speaking partner</p><br><button onclick="go('onb')">Shuru karein →</button></div>`;
+        touch();
+        document.body.classList.add('auth-mode');
+        updateTopHeader();
+
+        const defaultEmail = (S.userId && S.userId.includes('@')) 
+          ? S.userId 
+          : (S.userId ? `${S.userId}@example.com` : "brajesh.kushwaha@example.com");
+        const displayName = S.name || "Brajesh Kushwaha";
+
+        A.innerHTML = `
+          <div class="auth-split-wrapper">
+            <div class="auth-split-grid">
+
+              <!-- Left Section — Branding and Visual Experience -->
+              <div class="auth-brand-pane">
+                <div class="auth-brand-content">
+                  
+                  <!-- Brand Identity -->
+                  <div class="auth-brand-header">
+                    <div class="auth-brand-logo">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" x2="12" y1="19" y2="22"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style="font-size:20px;font-weight:800;letter-spacing:-0.4px;color:#fff">English Speaking</div>
+                      <div style="font-size:12px;color:#a78bfa;font-weight:600">by Brajesh Kushwaha &nbsp;•&nbsp; <span style="background:rgba(139,92,246,0.25);padding:2px 8px;border-radius:10px;font-size:10.5px;color:#c4b5fd">Enterprise AI Platform</span></div>
+                    </div>
+                  </div>
+
+                  <!-- Suggested Headline & Supporting Text -->
+                  <h1 class="auth-headline">Intelligence Behind Every Customer Interaction.</h1>
+                  <p class="auth-subtext">Transform customer conversations into meaningful experiences with AI-powered insights, intelligent automation, and personalized engagement.</p>
+
+                  <!-- Abstract AI Neural Network Visualizer -->
+                  <div class="neural-network-box">
+                    <svg viewBox="0 0 460 170" width="100%" height="160" style="display:block;overflow:visible">
+                      <defs>
+                        <linearGradient id="neuralGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.85"/>
+                          <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.85"/>
+                        </linearGradient>
+                        <linearGradient id="coreAura" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="#c084fc"/>
+                          <stop offset="100%" stop-color="#6366f1"/>
+                        </linearGradient>
+                        <filter id="glowFilt" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="5" result="blur"/>
+                          <feMerge>
+                            <feMergeNode in="blur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+
+                      <!-- Synaptic Connection Rays -->
+                      <line x1="230" y1="85" x2="65" y2="45" stroke="url(#neuralGrad1)" stroke-width="1.8" class="neural-pulse-line"/>
+                      <line x1="230" y1="85" x2="395" y2="45" stroke="url(#neuralGrad1)" stroke-width="1.8" class="neural-pulse-line"/>
+                      <line x1="230" y1="85" x2="55" y2="125" stroke="url(#neuralGrad1)" stroke-width="1.8" class="neural-pulse-line"/>
+                      <line x1="230" y1="85" x2="405" y2="125" stroke="url(#neuralGrad1)" stroke-width="1.8" class="neural-pulse-line"/>
+                      <line x1="230" y1="85" x2="140" y2="150" stroke="url(#neuralGrad1)" stroke-width="1.5" class="neural-pulse-line"/>
+                      <line x1="230" y1="85" x2="320" y2="150" stroke="url(#neuralGrad1)" stroke-width="1.5" class="neural-pulse-line"/>
+
+                      <!-- Secondary Connectors -->
+                      <line x1="65" y1="45" x2="55" y2="125" stroke="rgba(139,92,246,0.25)" stroke-width="1.2"/>
+                      <line x1="395" y1="45" x2="405" y2="125" stroke="rgba(6,182,212,0.25)" stroke-width="1.2"/>
+                      <line x1="65" y1="45" x2="140" y2="150" stroke="rgba(139,92,246,0.2)" stroke-width="1"/>
+                      <line x1="395" y1="45" x2="320" y2="150" stroke="rgba(6,182,212,0.2)" stroke-width="1"/>
+
+                      <!-- Peripheral Interaction Nodes -->
+                      <!-- Node 1: Live Voice -->
+                      <g transform="translate(65, 45)">
+                        <circle r="18" fill="rgba(124, 58, 237, 0.25)" stroke="#8b5cf6" stroke-width="1.5"/>
+                        <circle r="6" fill="#c4b5fd" class="neural-pulse-dot"/>
+                        <text x="0" y="30" fill="#cbd5e1" font-size="10.5" font-weight="700" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">Voice Bot</text>
+                      </g>
+
+                      <!-- Node 2: AI Interview -->
+                      <g transform="translate(395, 45)">
+                        <circle r="18" fill="rgba(6, 182, 212, 0.25)" stroke="#06b6d4" stroke-width="1.5"/>
+                        <circle r="6" fill="#67e8f9" class="neural-pulse-dot" style="animation-delay: 0.6s"/>
+                        <text x="0" y="30" fill="#cbd5e1" font-size="10.5" font-weight="700" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">Interview AI</text>
+                      </g>
+
+                      <!-- Node 3: Grammar Intelligence -->
+                      <g transform="translate(55, 125)">
+                        <circle r="16" fill="rgba(168, 85, 247, 0.2)" stroke="#a855f7" stroke-width="1.5"/>
+                        <circle r="5" fill="#e9d5ff" class="neural-pulse-dot" style="animation-delay: 1.2s"/>
+                        <text x="0" y="28" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">Grammar Hub</text>
+                      </g>
+
+                      <!-- Node 4: Vocabulary Engine -->
+                      <g transform="translate(405, 125)">
+                        <circle r="16" fill="rgba(99, 102, 241, 0.2)" stroke="#6366f1" stroke-width="1.5"/>
+                        <circle r="5" fill="#a5b4fc" class="neural-pulse-dot" style="animation-delay: 1.8s"/>
+                        <text x="0" y="28" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">Vocab Book</text>
+                      </g>
+
+                      <!-- Node 5: Pronunciation -->
+                      <g transform="translate(140, 150)">
+                        <circle r="14" fill="rgba(236, 72, 153, 0.2)" stroke="#ec4899" stroke-width="1.2"/>
+                        <circle r="4" fill="#fbcfe8" class="neural-pulse-dot" style="animation-delay: 2.2s"/>
+                        <text x="0" y="24" fill="#94a3b8" font-size="9.5" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">Pronounce</text>
+                      </g>
+
+                      <!-- Node 6: Analytics & Sync -->
+                      <g transform="translate(320, 150)">
+                        <circle r="14" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1.2"/>
+                        <circle r="4" fill="#6ee7b7" class="neural-pulse-dot" style="animation-delay: 2.5s"/>
+                        <text x="0" y="24" fill="#94a3b8" font-size="9.5" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">Cloud Sync</text>
+                      </g>
+
+                      <!-- Center AI Core Hub -->
+                      <g transform="translate(230, 85)" filter="url(#glowFilt)">
+                        <circle r="28" fill="rgba(124, 58, 237, 0.2)" stroke="rgba(139, 92, 246, 0.4)" stroke-width="2"/>
+                        <circle r="20" fill="url(#coreAura)"/>
+                        <path d="M-6 -2C-6 -5.3 0 -6 0 -6C0 -6 6 -5.3 6 -2C6 3 -6 4 -6 8H6" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+                      </g>
+                    </svg>
+                  </div>
+
+                  <!-- High-impact Capability Badges -->
+                  <div class="auth-feature-grid">
+                    <div class="auth-feature-pill">
+                      <span style="font-size:18px">🎙️</span>
+                      <div>
+                        <b>Live Voice Partner</b>
+                        <div style="font-size:11.5px;color:var(--mu)">Hands-free AI speech calls</div>
+                      </div>
+                    </div>
+                    <div class="auth-feature-pill">
+                      <span style="font-size:18px">🎯</span>
+                      <div>
+                        <b>Interview Intelligence</b>
+                        <div style="font-size:11.5px;color:var(--mu)">15 mock tracks & STAR analysis</div>
+                      </div>
+                    </div>
+                    <div class="auth-feature-pill">
+                      <span style="font-size:18px">📝</span>
+                      <div>
+                        <b>40-Topic Grammar Hub</b>
+                        <div style="font-size:11.5px;color:var(--mu)">AI sentence checker & drills</div>
+                      </div>
+                    </div>
+                    <div class="auth-feature-pill">
+                      <span style="font-size:18px">⚡</span>
+                      <div>
+                        <b>Cloud Persistence</b>
+                        <div style="font-size:11.5px;color:var(--mu)">Seamless Supabase backup</div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Footer Byline -->
+                <div class="auth-brand-footer">
+                  <span>Engineered by <b>Brajesh Kushwaha</b></span>
+                  <span>v2.5 · Enterprise AI Edition</span>
+                </div>
+              </div>
+
+              <!-- Right Section — Authentication Card -->
+              <div class="auth-form-card">
+                
+                <div style="margin-bottom:22px">
+                  <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.4px;margin:0 0 6px;color:#fff">
+                    ${authTab === 'signin' ? 'Welcome back 👋' : 'Create your account 🚀'}
+                  </h2>
+                  <p class="mu" style="margin:0;font-size:13.5px;line-height:1.5">
+                    ${authTab === 'signin' 
+                      ? 'Sign in to access your intelligent English speaking coach and personalized analytics.' 
+                      : 'Join thousands of professionals accelerating their English speaking fluency with AI.'}
+                  </p>
+                </div>
+
+                <!-- Segmented Tab Toggle -->
+                <div class="auth-tabs">
+                  <button type="button" class="auth-tab-btn ${authTab === 'signin' ? 'active' : ''}" onclick="switchAuthTab('signin')">Sign In</button>
+                  <button type="button" class="auth-tab-btn ${authTab === 'signup' ? 'active' : ''}" onclick="switchAuthTab('signup')">Create Account</button>
+                </div>
+
+                <!-- Alert Message Area -->
+                <div id="auth-alert" class="auth-alert-box"></div>
+
+                <!-- Auth Form -->
+                <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                  
+                  ${authTab === 'signup' ? `
+                    <label class="auth-field-label">Full Name</label>
+                    <div class="auth-input-wrapper">
+                      <span class="input-icon">👤</span>
+                      <input type="text" id="auth-name" placeholder="e.g. Brajesh Kushwaha" value="${esc(displayName)}" required autocomplete="name">
+                    </div>
+                  ` : ''}
+
+                  <label class="auth-field-label">Email or Username</label>
+                  <div class="auth-input-wrapper">
+                    <span class="input-icon">✉️</span>
+                    <input type="text" id="auth-email" placeholder="name@company.com or username" value="${esc(defaultEmail)}" required autocomplete="username">
+                  </div>
+
+                  <label class="auth-field-label">Password</label>
+                  <div class="auth-input-wrapper">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="auth-pass" placeholder="••••••••••••" value="english2026" required autocomplete="current-password">
+                    <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility()" title="Show/Hide Password" id="auth-eye-btn">👁️</button>
+                  </div>
+
+                  ${authTab === 'signup' ? `
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px">
+                      <div>
+                        <label class="auth-field-label">Current Level</label>
+                        <div class="auth-input-wrapper" style="margin-bottom:12px">
+                          <select id="auth-level" style="padding-left:14px">
+                            <option value="0">Beginner (Hesitant)</option>
+                            <option value="1">Elementary (Can Understand)</option>
+                            <option value="2" selected>Intermediate (Simple Sentences)</option>
+                            <option value="3">Conversational (Daily English)</option>
+                            <option value="4">Advanced (Wants Fluency)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="auth-field-label">Primary Goal</label>
+                        <div class="auth-input-wrapper" style="margin-bottom:12px">
+                          <select id="auth-goal" style="padding-left:14px">
+                            <option value="Job Interview" selected>Job & Placement</option>
+                            <option value="Technical Interview">Technical Interview</option>
+                            <option value="Daily Conversation">Daily Conversation</option>
+                            <option value="College Presentation">College & Studies</option>
+                            <option value="Fluency & Confidence">Fluency & Confidence</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  <!-- Remember Me & Forgot Password Row -->
+                  <div class="auth-options-row">
+                    <label class="auth-remember-label">
+                      <input type="checkbox" id="auth-remember" checked>
+                      <span>Remember me</span>
+                    </label>
+                    <a class="auth-forgot-link" onclick="showForgotPasswordModal()">Forgot password?</a>
+                  </div>
+
+                  <!-- Primary Sign In Button -->
+                  <button type="submit" class="auth-primary-btn" id="auth-submit-btn">
+                    <span>${authTab === 'signin' ? 'Sign In to Dashboard' : 'Complete Setup & Enter'}</span>
+                    <span style="font-size:17px">➔</span>
+                  </button>
+                </form>
+
+                <!-- Divider -->
+                <div class="auth-divider">OR INSTANT ACCESS</div>
+
+                <!-- Instant Demo Button -->
+                <button type="button" class="auth-demo-btn" onclick="handleDemoQuickAccess()">
+                  <span>⚡ Instant Demo / Continue as Guest</span>
+                </button>
+
+                <!-- Security Trust Footer -->
+                <div class="auth-trust-footer">
+                  <span>🔒 Secured with Local State & Supabase PostgreSQL</span>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        `;
       };
+
+      R.login = R.splash;
+
+      function switchAuthTab(tab) {
+        authTab = tab;
+        R.splash();
+      }
+
+      function toggleAuthPasswordVisibility() {
+        const inp = $('#auth-pass');
+        const btn = $('#auth-eye-btn');
+        if (!inp) return;
+        if (inp.type === 'password') {
+          inp.type = 'text';
+          if (btn) btn.textContent = '👁️‍🗨️';
+        } else {
+          inp.type = 'password';
+          if (btn) btn.textContent = '👁️';
+        }
+      }
+
+      function showAuthAlert(msg, type = 'error') {
+        const al = $('#auth-alert');
+        if (!al) return;
+        al.className = 'auth-alert-box ' + type;
+        al.innerHTML = (type === 'error' ? '⚠️ ' : '✅ ') + esc(msg);
+      }
+
+      function handleAuthSubmit(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        const emailInput = $('#auth-email');
+        const passInput = $('#auth-pass');
+        if (!emailInput || !emailInput.value.trim()) {
+          showAuthAlert("Please provide a valid email or username.");
+          return;
+        }
+        if (!passInput || !passInput.value.trim()) {
+          showAuthAlert("Please enter your password.");
+          return;
+        }
+
+        const rawEmail = emailInput.value.trim();
+        const extractedName = rawEmail.includes('@') ? rawEmail.split('@')[0] : rawEmail;
+        const formattedName = extractedName.charAt(0).toUpperCase() + extractedName.slice(1);
+
+        if (authTab === 'signup') {
+          const nameInput = $('#auth-name');
+          const levelSelect = $('#auth-level');
+          const goalSelect = $('#auth-goal');
+          if (nameInput && nameInput.value.trim()) {
+            S.name = nameInput.value.trim();
+          } else {
+            S.name = formattedName;
+          }
+          if (levelSelect) S.level = parseInt(levelSelect.value) || 2;
+          if (goalSelect) S.goal = goalSelect.value || "Job Interview";
+        } else {
+          if (!S.name || S.name === "Student") {
+            S.name = formattedName;
+          }
+          if (typeof S.level !== 'number' || S.level < 0) {
+            S.level = 2; // Default Intermediate
+          }
+          if (!S.goal) {
+            S.goal = "Job Interview";
+          }
+        }
+
+        S.userId = rawEmail.replace(/[^a-zA-Z0-9_-]/g, '_');
+        save();
+        syncToSupabaseCloud();
+
+        showAuthAlert("Welcome back, " + S.name + "! Launching dashboard...", "success");
+        setTimeout(() => {
+          go('home');
+        }, 300);
+      }
+
+      function handleDemoQuickAccess() {
+        if (!S.name) S.name = "Brajesh Kushwaha";
+        if (typeof S.level !== 'number' || S.level < 0) S.level = 2;
+        if (!S.goal) S.goal = "Job Interview";
+        if (!S.userId) S.userId = "brajesh_main";
+        save();
+        go('home');
+      }
+
+      function showForgotPasswordModal() {
+        const email = ($('#auth-email') && $('#auth-email').value) || S.userId || 'your-account';
+        showModal(`
+          <div style="text-align:center;padding:10px">
+            <div style="font-size:42px;margin-bottom:10px">🔑</div>
+            <h2 style="margin:0 0 8px;font-size:20px">Reset Your Password</h2>
+            <p class="mu" style="font-size:13.5px;line-height:1.5">
+              A secure password reset link will be simulated for <b>${esc(email)}</b>. In local mode, your credentials are saved in your encrypted local session.
+            </p>
+            <div class="card" style="padding:14px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);margin:14px 0">
+              <span class="mu" style="font-size:12px">Default Access Password:</span>
+              <div style="font-size:16px;font-weight:700;color:var(--pr-light);margin-top:4px">english2026</div>
+            </div>
+            <button style="width:100%;padding:12px;margin-bottom:8px" onclick="closeModal();if($('#auth-pass')){$('#auth-pass').value='english2026';}showAuthAlert('Password autofilled! Click Sign In.', 'success');">Auto-fill Password & Close</button>
+            <button class="g" style="width:100%;padding:10px" onclick="closeModal()">Close</button>
+          </div>
+        `);
+      }
+
+      function logoutAuth() {
+        go('splash');
+      }
+
+      window.switchAuthTab = switchAuthTab;
+      window.toggleAuthPasswordVisibility = toggleAuthPasswordVisibility;
+      window.handleAuthSubmit = handleAuthSubmit;
+      window.handleDemoQuickAccess = handleDemoQuickAccess;
+      window.showForgotPasswordModal = showForgotPasswordModal;
+      window.logoutAuth = logoutAuth;
+      window.updateTopHeader = updateTopHeader;
       let ob = { step: 0, name: "", lv: -1, goal: "" };
       R.onb = () => {
         const L = [
@@ -7658,9 +8669,15 @@ Return ONLY a JSON object:
           d = Math.min(30, Object.keys(S.done).length + 1);
 
         A.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <h1>${g}, ${esc(S.name || "Student")}! 👋</h1>
-            <span class="badge" style="background:var(--ok);color:#fff" title="Data is synced to Supabase">☁️ Cloud Synced</span>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+            <div>
+              <div style="font-size:11.5px;font-weight:700;color:#a78bfa;letter-spacing:0.5px">ENGLISH SPEAKING SAAS · BY BRAJESH KUSHWAHA</div>
+              <h1 style="margin:2px 0 0;font-size:26px">${g}, ${esc(S.name || "Learner")}! 👋</h1>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="badge" style="background:var(--ok);color:#fff" title="Data is synced to Supabase">☁️ Cloud Synced</span>
+              <button class="s" style="padding:6px 12px;font-size:12px" onclick="go('splash')">Switch Account 👤</button>
+            </div>
           </div>
 
           <!-- Prominent AI Interview Coach Banner -->
@@ -8391,6 +9408,16 @@ Return ONLY a JSON object:
             </div>
             <button class="s" style="width:100%;margin-top:8px" onclick="testSupabaseConnection()">⚡ Test Supabase Connection</button>
             <div id="supabase-test-res" style="margin-top:8px;font-size:13.5px"></div>
+          </div>
+
+          <!-- Account Session Management -->
+          <div class="card" style="border-color:rgba(139,92,246,0.3)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <b>👤 Account & Authentication</b>
+              <span class="badge" style="background:rgba(139,92,246,0.2);color:#c4b5fd">Active Session</span>
+            </div>
+            <p class="mu" style="font-size:13px">Logged in as <b>${esc(S.name || 'Brajesh')}</b> (${esc(S.userId || 'brajesh_main')}). You can switch accounts or open the login portal anytime.</p>
+            <button style="width:100%;margin-top:8px;background:rgba(139,92,246,0.18);border:1px solid #8b5cf6;color:#fff" onclick="logoutAuth()">🔒 Sign Out / Switch Account</button>
           </div>
 
           <!-- Google Gemini AI Section -->

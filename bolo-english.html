@@ -1963,7 +1963,11 @@
         }
         stopListening();
         view = v;
-        if (R[v]) R[v](a);
+        try {
+          if (R[v]) R[v](a);
+        } catch (e) {
+          console.error("View router error for:", v, e);
+        }
         window.scrollTo(0, 0);
         nav();
         checkProtocolBanner();
@@ -6067,7 +6071,7 @@ Return ONLY a JSON object:
       window.closeGrammarDrillModal = closeGrammarDrillModal;
 
 
-            // =========================================================================
+                  // =========================================================================
       // ---------- AI INTERVIEW INTELLIGENCE & PERSONAL INTERVIEW COACH ----------
       // =========================================================================
 
@@ -6388,19 +6392,36 @@ Return ONLY a JSON object:
 
       // R.interview Router
       R.interview = (subView) => {
-        if (subView) interviewState.view = subView;
-        const v = interviewState.view;
+        try {
+          if (subView) interviewState.view = subView;
+          const v = interviewState.view;
 
-        if (v === "profile") {
-          renderInterviewProfileEditor();
-        } else if (v === "setup") {
-          renderInterviewSetup();
-        } else if (v === "room") {
-          renderInterviewRoom();
-        } else if (v === "report") {
-          renderInterviewReport();
-        } else {
-          renderInterviewDashboard();
+          if (v === "profile") {
+            renderInterviewProfileEditor();
+          } else if (v === "setup") {
+            renderInterviewSetup();
+          } else if (v === "room") {
+            renderInterviewRoom();
+          } else if (v === "report") {
+            renderInterviewReport();
+          } else {
+            renderInterviewDashboard();
+          }
+        } catch (err) {
+          console.error("Error in R.interview:", err);
+          interviewState.view = "dashboard";
+          try {
+            renderInterviewDashboard();
+          } catch (e2) {
+            console.error("Fatal dashboard error:", e2);
+            A.innerHTML = `
+              <div class="card" style="padding:24px;text-align:center">
+                <h2>AI Interview Intelligence 🎯</h2>
+                <p class="mu">An error occurred loading the interview view. Please click below to reset.</p>
+                <button style="padding:10px 18px" onclick="S.interviewProfile=null;R.interview('dashboard')">Reset Profile & Reload</button>
+              </div>
+            `;
+          }
         }
       };
 
@@ -6460,9 +6481,9 @@ Return ONLY a JSON object:
               <button class="s" style="padding:5px 12px;font-size:12px" onclick="R.interview('profile')">Edit 20-Field Profile ✎</button>
             </div>
             <div style="font-size:13px;color:var(--tx-sec);margin-top:6px;line-height:1.5">
-              <b>Target Role:</b> <span style="color:var(--pr-light)">${esc(profile.preferredRole || "Full-Stack Developer")}</span> &nbsp;|&nbsp;
-              <b>Projects Configured:</b> <span>${(profile.projects || []).length}</span> &nbsp;|&nbsp;
-              <b>Key Skills:</b> <span>${esc((profile.skills || []).slice(0, 4).join(", "))}...</span>
+              <b>Target Role:</b> <span style="color:var(--pr-light)">${esc(profile.preferredRole || profile.targetRole || "Full-Stack Developer")}</span> &nbsp;|&nbsp;
+              <b>Projects Configured:</b> <span>${Array.isArray(profile.projects) ? profile.projects.length : (typeof profile.projects === "string" && profile.projects.trim() ? profile.projects.split(";").length : 0)}</span> &nbsp;|&nbsp;
+              <b>Key Skills:</b> <span>${esc(Array.isArray(profile.skills) ? profile.skills.slice(0, 4).join(", ") : (typeof profile.skills === "string" ? profile.skills.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean).slice(0, 4).join(", ") : "JavaScript, React, Node.js"))}...</span>
             </div>
           </div>
 
@@ -6610,6 +6631,25 @@ Return ONLY a JSON object:
       // -------------------------------------------------------------
       function renderInterviewProfileEditor() {
         const p = S.interviewProfile || DEFAULT_INTERVIEW_PROFILE;
+        let projectsList = [];
+        if (Array.isArray(p.projects)) {
+          projectsList = p.projects;
+        } else if (typeof p.projects === 'string' && p.projects.trim()) {
+          projectsList = p.projects.split(';').map(pj => {
+            const parts = pj.split('(');
+            return {
+              title: parts[0].trim() || 'Project',
+              tech: parts[1] ? (parts[1].split(')')[0] || '') : '',
+              description: pj.trim(),
+              challenges: ''
+            };
+          });
+        }
+        if (!projectsList.length) {
+          projectsList = [
+            { title: 'English Speaking Coach', tech: 'React, Node.js, Supabase', description: 'Interactive English learning app with AI voice bot and interview simulator.', challenges: 'Speech latency and conversational pacing.' }
+          ];
+        }
 
         A.innerHTML = `
           <div class="card" style="text-align:left;padding:24px;max-width:720px;margin:0 auto">
@@ -6682,7 +6722,7 @@ Return ONLY a JSON object:
               <!-- Section 3: Projects -->
               <div style="font-size:14px;font-weight:700;color:var(--pr-light);border-bottom:1px solid var(--bd);padding-bottom:4px;margin-top:8px">3. Key Projects (AI will question these!)</div>
               <div id="prof-projects-container" style="display:flex;flex-direction:column;gap:10px">
-                ${(p.projects || []).map((proj, idx) => `
+                ${projectsList.map((proj, idx) => `
                   <div class="card" style="padding:12px;background:rgba(255,255,255,0.03);position:relative">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                       <b style="font-size:13px;color:var(--pr-light)">Project #${idx + 1}</b>

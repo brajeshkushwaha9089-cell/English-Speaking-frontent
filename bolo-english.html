@@ -2419,6 +2419,7 @@
         words: [],
         customWords: [],
         geminiKey: localCfg.geminiKey || "",
+        openaiKey: localCfg.openaiKey || "",
         backendUrl: localCfg.backendUrl || "",
         aiMode: "gemini",
         userId: "brajesh_main",
@@ -2434,6 +2435,7 @@
 
       const DEFAULT_GEMINI_KEY = (typeof atob !== "undefined") ? atob("QVEuQWI4Uk42STBZUGdtcGlHcGtrbDFrNGZIRUdJamRCWjVmUkZCdWNHMEFSNWFwTjVRSVE=") : "";
       if (!S.geminiKey || !S.geminiKey.trim()) S.geminiKey = (localCfg && localCfg.geminiKey) || DEFAULT_GEMINI_KEY;
+      if (!S.openaiKey || !S.openaiKey.trim()) S.openaiKey = (localCfg && localCfg.openaiKey) || "";
       if (!S.backendUrl && localCfg.backendUrl) S.backendUrl = localCfg.backendUrl;
       if (!S.aiMode) S.aiMode = "gemini";
       if (!S.userId) S.userId = "brajesh_main";
@@ -2664,6 +2666,79 @@
         return null;
       }
       window.callGeminiApi = callGeminiApi;
+
+      async function callOpenAiApi(promptText) {
+        // 1. Try Backend Proxy first if available
+        const proxyUrl = getApiUrl("/api/openai/chat");
+        if (proxyUrl) {
+          try {
+            const proxyRes = await fetch(proxyUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prompt: promptText, key: S.openaiKey || "", model: "gpt-4o-mini" })
+            });
+            if (proxyRes.ok) {
+              const data = await proxyRes.json();
+              if (data) return data;
+            }
+          } catch (e) {}
+        }
+
+        // 2. Client-side direct call to OpenAI
+        const key = (S.openaiKey && S.openaiKey.trim()) || (window.LOCAL_CONFIG && window.LOCAL_CONFIG.openaiKey) || "";
+        if (!key) return null;
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+          const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${key}`
+            },
+            signal: controller.signal,
+            body: JSON.stringify({
+              model: "gpt-4o-mini",
+              messages: [{ role: "user", content: promptText }],
+              temperature: 0.7,
+              response_format: { type: "json_object" }
+            })
+          });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            const content = data.choices?.[0]?.message?.content;
+            if (content) {
+              const parsed = parseGeminiResponseText(content);
+              if (parsed) return parsed;
+            }
+          } else if (res.status === 429) {
+            console.warn("OpenAI quota/credits exhausted. Auto falling back to Gemini...");
+          }
+        } catch (e) {
+          console.warn("OpenAI direct API error:", e);
+        }
+        return null;
+      }
+      window.callOpenAiApi = callOpenAiApi;
+
+      // Smart Dual AI Engine with seamless fallback
+      async function callAIEngine(promptText) {
+        if (S.aiMode === "openai") {
+          const openAiRes = await callOpenAiApi(promptText);
+          if (openAiRes) return openAiRes;
+          // Auto fallback to Gemini if OpenAI credits exhausted
+          return await callGeminiApi(promptText);
+        } else {
+          const gemRes = await callGeminiApi(promptText);
+          if (gemRes) return gemRes;
+          return await callOpenAiApi(promptText);
+        }
+      }
+      window.callAIEngine = callAIEngine;
 
       // ---------- Comprehensive Data ----------
       const WARM = [
@@ -10648,32 +10723,51 @@ Return ONLY a JSON object:
             <button style="width:100%;margin-top:8px;background:rgba(139,92,246,0.18);border:1px solid #8b5cf6;color:#fff" onclick="logoutAuth()">🔒 Sign Out / Switch Account</button>
           </div>
 
-          <!-- Google Gemini AI Section -->
+          <!-- AI Provider & Models Section (Dual Gemini & ChatGPT Support) -->
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <b>✨ Google Gemini AI Mode</b>
-              <span class="badge" style="background:${S.aiMode === 'gemini' ? 'var(--ok)' : 'var(--bd)'};color:${S.aiMode === 'gemini' ? '#fff' : 'var(--mu)'}">
-                ${S.aiMode === 'gemini' ? 'Active' : 'Offline'}
+              <b>🤖 AI Provider & Models</b>
+              <span class="badge" style="background:${S.aiMode === 'local' ? 'var(--bd)' : 'var(--ok)'};color:#fff">
+                ${S.aiMode === 'openai' ? '⚡ ChatGPT Active' : (S.aiMode === 'gemini' ? '✨ Gemini Active' : '🏠 Local Mode')}
               </span>
             </div>
-            <p class="mu">Google Gemini AI ke zariye natural conversation aur smart Hinglish feedback payein.</p>
-            
-            <div class="row" style="margin:10px 0">
-              <button class="${S.aiMode === 'gemini' ? '' : 's'}" onclick="S.aiMode='gemini';save();R.set()">✨ Gemini Mode</button>
+            <p class="mu" style="font-size:13px">Choose your preferred AI coach engine. If OpenAI has no credits or is busy, Bolo automatically falls back to Gemini so your practice never stops.</p>
+
+            <div class="row" style="margin:12px 0;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="${S.aiMode === 'gemini' ? '' : 's'}" onclick="S.aiMode='gemini';save();R.set()">✨ Google Gemini (Active & Free)</button>
+              <button class="${S.aiMode === 'openai' ? '' : 's'}" onclick="S.aiMode='openai';save();R.set()">⚡ OpenAI ChatGPT (gpt-4o-mini)</button>
               <button class="${S.aiMode === 'local' ? '' : 's'}" onclick="S.aiMode='local';save();R.set()">🏠 Local Mode</button>
             </div>
 
-            <div style="margin:12px 0">
-              <label class="mu" style="font-size:13px">Gemini API Key</label>
-              <div style="display:flex;gap:6px;margin-top:4px">
+            <!-- Gemini Key Config -->
+            <div style="margin:14px 0;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <label class="mu" style="font-size:12.5px;font-weight:600">Google Gemini API Key (Recommended)</label>
+                <span class="badge" style="background:#065f46;color:#6ee7b7;font-size:10.5px">✓ 100% Free & Working</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:6px">
                 <input type="password" id="gemini-key-input" value="${esc(S.geminiKey || '')}" placeholder="Gemini API Key">
-                <button class="s" style="padding:10px 14px;white-space:nowrap" onclick="toggleKeyVisibility()">👁️</button>
+                <button class="s" style="padding:10px 14px;white-space:nowrap" onclick="toggleKeyVisibility('gemini-key-input')">👁️</button>
                 <button class="s" style="padding:10px 14px;white-space:nowrap" onclick="saveGeminiKey()">Save</button>
               </div>
+              <button class="s" style="width:100%;margin-top:6px" onclick="testGeminiConnection()">⚡ Test Gemini Connection</button>
+              <div id="gemini-test-res" style="margin-top:6px;font-size:13px"></div>
             </div>
 
-            <button class="s" style="width:100%;margin-top:6px" onclick="testGeminiConnection()">⚡ Test Gemini Connection</button>
-            <div id="gemini-test-res" style="margin-top:8px;font-size:13.5px"></div>
+            <!-- OpenAI ChatGPT Key Config -->
+            <div style="margin:14px 0;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <label class="mu" style="font-size:12.5px;font-weight:600">OpenAI ChatGPT API Key</label>
+                <span style="font-size:11px;color:#cbd5e1">Model: <code>gpt-4o-mini</code></span>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <input type="password" id="openai-key-input" value="${esc(S.openaiKey || '')}" placeholder="sk-proj-...">
+                <button class="s" style="padding:10px 14px;white-space:nowrap" onclick="toggleKeyVisibility('openai-key-input')">👁️</button>
+                <button class="s" style="padding:10px 14px;white-space:nowrap" onclick="saveOpenAiKey()">Save</button>
+              </div>
+              <button class="s" style="width:100%;margin-top:6px" onclick="testOpenAiConnection()">⚡ Test ChatGPT Connection</button>
+              <div id="openai-test-res" style="margin-top:6px;font-size:13px"></div>
+            </div>
           </div>
 
           <div class="card">

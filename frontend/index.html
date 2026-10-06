@@ -1672,6 +1672,30 @@
         cursor: pointer;
         transition: all 0.2s ease;
       }
+            .auth-magic-link-btn {
+        width: 100%;
+        padding: 13px 18px;
+        border-radius: 14px;
+        background: rgba(139, 92, 246, 0.12);
+        border: 1px solid rgba(139, 92, 246, 0.38);
+        color: #c4b5fd;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.22s ease;
+      }
+      .auth-magic-link-btn:hover {
+        background: rgba(139, 92, 246, 0.22);
+        border-color: rgba(139, 92, 246, 0.65);
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.25);
+      }
+
       .auth-tab-btn.active {
         background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(99, 102, 241, 0.35));
         color: #fff;
@@ -2416,7 +2440,9 @@
         user: null,
         session: null,
         pendingEmail: (typeof localStorage !== "undefined" && localStorage.getItem("bolo_auth_pending_email")) || "",
+        pendingMagicEmail: (typeof localStorage !== "undefined" && localStorage.getItem("bolo_auth_magic_email")) || "",
         resendCooldownEnd: parseInt((typeof localStorage !== "undefined" && localStorage.getItem("bolo_resend_cooldown_end")) || "0", 10),
+        magicCooldownEnd: parseInt((typeof localStorage !== "undefined" && localStorage.getItem("bolo_magic_cooldown_end")) || "0", 10),
         initialized: false,
         initPromise: null,
 
@@ -2528,6 +2554,175 @@
           try {
             localStorage.setItem("bolo_resend_cooldown_end", this.resendCooldownEnd.toString());
           } catch (e) {}
+        },
+
+        getMagicCooldownRemaining() {
+          const now = Date.now();
+          if (this.magicCooldownEnd && this.magicCooldownEnd > now) {
+            return Math.ceil((this.magicCooldownEnd - now) / 1000);
+          }
+          return 0;
+        },
+
+        setMagicCooldown(seconds = 60) {
+          this.magicCooldownEnd = Date.now() + (seconds * 1000);
+          try {
+            localStorage.setItem("bolo_magic_cooldown_end", this.magicCooldownEnd.toString());
+          } catch (e) {}
+        },
+
+        async sendMagicLink(email) {
+          const cleanEmail = (email || "").trim().toLowerCase();
+          if (!cleanEmail) {
+            return { success: false, error: "Please provide a valid email address." };
+          }
+
+          const remaining = this.getMagicCooldownRemaining();
+          if (remaining > 0) {
+            return {
+              success: false,
+              error: `Resend available in ${remaining} seconds.`
+            };
+          }
+
+          const callbackUrl = window.location.origin + window.location.pathname + '#auth/callback';
+          const sb = this.getClient();
+
+          if (sb) {
+            try {
+              const { data, error } = await sb.auth.signInWithOtp({
+                email: cleanEmail,
+                options: {
+                  emailRedirectTo: callbackUrl
+                }
+              });
+
+              if (error) {
+                let msg = error.message || "Unable to send login link.";
+                if (msg.toLowerCase().includes("rate limit") || error.status === 429) {
+                  msg = "Email rate limit exceeded. Please wait 60 seconds before requesting another link.";
+                }
+                this.setMagicCooldown(60);
+                return { success: false, error: msg };
+              }
+
+              this.pendingMagicEmail = cleanEmail;
+              try { localStorage.setItem("bolo_auth_magic_email", cleanEmail); } catch (e) {}
+              this.setMagicCooldown(60);
+              return {
+                success: true,
+                message: "If the email is eligible for email authentication, a secure link has been sent."
+              };
+            } catch (err) {
+              return { success: false, error: "Network error sending login link." };
+            }
+          } else {
+            return await this.restSendMagicLink(cleanEmail, callbackUrl);
+          }
+        },
+
+        async restSendMagicLink(email, callbackUrl) {
+          try {
+            const res = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/otp`, {
+              method: "POST",
+              headers: {
+                "apikey": SUPABASE_CONFIG.publishableKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                email: email,
+                email_redirect_to: callbackUrl
+              })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              const msg = data.msg || data.error_description || "";
+              if (msg.toLowerCase().includes("rate limit") || res.status === 429) {
+                this.setMagicCooldown(60);
+                return { success: false, error: "Email rate limit exceeded. Please wait 60 seconds." };
+              }
+              return { success: false, error: msg || "Failed to dispatch magic link." };
+            }
+            this.pendingMagicEmail = email;
+            try { localStorage.setItem("bolo_auth_magic_email", email); } catch (e) {}
+            this.setMagicCooldown(60);
+            return {
+              success: true,
+              message: "If the email is eligible for email authentication, a secure link has been sent."
+            };
+          } catch (err) {
+            return { success: false, error: "Network error sending login link." };
+          }
+        },
+
+        async processAuthCallback() {
+          const hash = (typeof window !== "undefined" && window.location.hash) || "";
+          const search = (typeof window !== "undefined" && window.location.search) || "";
+
+          // Check for error parameters in hash or search
+          const fullParamsStr = (hash.replace(/^#\/?auth\/callback\??/, "").replace(/^#/, "") + "&" + search.replace(/^\?/, ""));
+          const params = new URLSearchParams(fullParamsStr);
+
+          const errorDesc = params.get("error_description");
+          const errorMsg = params.get("error");
+          if (errorMsg || errorDesc) {
+            try { history.replaceState(null, "", window.location.pathname + "#login"); } catch (e) {}
+            return {
+              success: false,
+              error: errorDesc ? decodeURIComponent(errorDesc.replace(/\+/g, " ")) : (errorMsg || "The login link is invalid or expired.")
+            };
+          }
+
+          const sb = this.getClient();
+          if (sb) {
+            try {
+              const { data } = await sb.auth.getSession();
+              if (data && data.session && data.session.user) {
+                this.session = data.session;
+                this.user = data.session.user;
+                this.pendingEmail = "";
+                this.pendingMagicEmail = "";
+                try {
+                  localStorage.removeItem("bolo_auth_pending_email");
+                  localStorage.removeItem("bolo_auth_magic_email");
+                } catch (e) {}
+                this.syncUserData();
+                return { success: true, verified: true, user: this.user };
+              }
+            } catch (e) {}
+          }
+
+          // REST fallback token extraction
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+          if (accessToken) {
+            try {
+              const res = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/user`, {
+                headers: {
+                  "apikey": SUPABASE_CONFIG.publishableKey,
+                  "Authorization": `Bearer ${accessToken}`
+                }
+              });
+              if (res.ok) {
+                const u = await res.json();
+                this.user = u;
+                this.session = { access_token: accessToken, refresh_token: refreshToken, user: u };
+                try {
+                  localStorage.setItem("bolo_supabase_token", JSON.stringify(this.session));
+                  localStorage.removeItem("bolo_auth_pending_email");
+                  localStorage.removeItem("bolo_auth_magic_email");
+                } catch (e) {}
+                this.syncUserData();
+                return { success: true, verified: true, user: this.user };
+              }
+            } catch (e) {}
+          }
+
+          if (this.isVerified()) {
+            return { success: true, verified: true, user: this.user };
+          }
+
+          return { success: false, error: "Unable to authenticate with this link. It may be expired or invalid." };
         },
 
         async signUp(fullName, email, password) {
@@ -3820,7 +4015,10 @@
 
       function resolveRouteName(r) {
         if (!r) return { view: 'grammar', arg: null };
-        const clean = String(r).replace(/^[#/]+/, '').trim().toLowerCase();
+        const raw = String(r).replace(/^[#/]+/, '').trim();
+        const clean = raw.split(/[?&#]/)[0].toLowerCase();
+
+        if (clean === 'auth/callback' || clean === 'callback') return { view: 'auth/callback', arg: null };
         if (clean === 'grammar-hub' || clean === 'grammar') return { view: 'grammar', arg: null };
         if (clean === 'dashboard') return { view: 'home', arg: null };
         if (clean === 'profile') return { view: 'prog', arg: null };
@@ -3832,12 +4030,17 @@
         return { view: clean, arg: null };
       }
 
-      const PUBLIC_ROUTES = ['splash', 'login', 'verify-email'];
+      const PUBLIC_ROUTES = ['splash', 'login', 'verify-email', 'auth/callback'];
 
       function checkRouteGuard(targetView) {
         const v = targetView || view;
         const isAuth = BoloAuth.isAuthenticated();
         const isVer = BoloAuth.isVerified();
+
+        // Callback route is always allowed to validate credentials
+        if (v === 'auth/callback') {
+          return 'auth/callback';
+        }
 
         // 1. Unauthenticated users:
         if (!isAuth) {
@@ -3869,7 +4072,7 @@
       function updateSidebar() {
         const sb = $('#saas-sidebar');
         if (!sb) return;
-        const isAuthScreen = (view === 'splash' || view === 'login' || view === 'verify-email' || !BoloAuth.isVerified());
+        const isAuthScreen = (view === 'splash' || view === 'login' || view === 'verify-email' || view === 'auth/callback' || !BoloAuth.isVerified());
         if (isAuthScreen) {
           sb.style.display = 'none';
           return;
@@ -3937,7 +4140,7 @@
       function updateTopHeader() {
         const h = $('#top-header');
         if (!h) return;
-        const isAuthScreen = (view === 'splash' || view === 'login' || view === 'verify-email' || !BoloAuth.isVerified());
+        const isAuthScreen = (view === 'splash' || view === 'login' || view === 'verify-email' || view === 'auth/callback' || !BoloAuth.isVerified());
         if (isAuthScreen) {
           h.style.display = 'none';
           document.body.classList.add('auth-mode');
@@ -4762,10 +4965,11 @@
       // =========================================================================
       // ---------- PREMIUM SPLIT-SCREEN AUTHENTICATION & LOGIN INTERFACE ----------
       // =========================================================================
-      // AUTHENTICATION VIEWS & HANDLERS (SUPABASE AUTH INTEGRATION)
+      // AUTHENTICATION VIEWS & HANDLERS (PASSWORD + EMAIL MAGIC-LINK AUTH)
       // =========================================================================
-      let authTab = "signin"; // "signin" | "signup"
+      let authTab = "signin"; // "signin" | "signup" | "magiclink" | "magiclink_sent"
       let resendTimerInterval = null;
+      let magicResendTimerInterval = null;
 
       function updateResendCooldownUI() {
         const btn = $('#verify-resend-btn');
@@ -4797,12 +5001,42 @@
         }, 1000);
       }
 
+      function updateMagicResendCooldownUI() {
+        const btn = $('#magic-resend-btn');
+        const txt = $('#magic-resend-text');
+        if (!btn || !txt) return;
+        const rem = BoloAuth.getMagicCooldownRemaining();
+        if (rem > 0) {
+          btn.disabled = true;
+          btn.style.opacity = '0.6';
+          btn.style.cursor = 'not-allowed';
+          txt.textContent = `Resend available in ${rem} seconds`;
+        } else {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+          txt.textContent = 'Resend Link';
+        }
+      }
+
+      function startMagicResendCooldownTracker() {
+        if (magicResendTimerInterval) clearInterval(magicResendTimerInterval);
+        updateMagicResendCooldownUI();
+        magicResendTimerInterval = setInterval(() => {
+          updateMagicResendCooldownUI();
+          if (BoloAuth.getMagicCooldownRemaining() <= 0) {
+            clearInterval(magicResendTimerInterval);
+            magicResendTimerInterval = null;
+          }
+        }, 1000);
+      }
+
       R.splash = () => {
         touch();
         document.body.classList.add('auth-mode');
         updateTopHeader();
 
-        const defaultEmail = BoloAuth.pendingEmail || "";
+        const defaultEmail = BoloAuth.pendingEmail || BoloAuth.pendingMagicEmail || "";
         const displayName = "";
 
         A.innerHTML = `
@@ -4821,112 +5055,204 @@
                     </svg>
                   </div>
                   <div>
-                    <div style="font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#fff">Grammar Learning Hub</div>
+                    <div style="font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#fff">Grammar Learning Hub 📚</div>
                     <div style="font-size:12px;color:#a78bfa;font-weight:600">by Brajesh Kushwaha</div>
                   </div>
                 </div>
 
-                <div style="margin-bottom:20px">
-                  <h1 class="auth-headline" style="font-size:23px;margin-bottom:8px">
-                    ${authTab === 'signin' ? 'Welcome Back to Grammar Hub' : 'Create Your Account'}
+                ${authTab === 'magiclink_sent' ? `
+                  <!-- Check Your Email State for Magic Link -->
+                  <div style="margin:20px auto 14px;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle, rgba(139,92,246,0.3) 0%, rgba(139,92,246,0.06) 70%);border:2px solid rgba(139,92,246,0.45);display:flex;align-items:center;justify-content:center;box-shadow:0 0 32px rgba(139,92,246,0.3)">
+                    <span style="font-size:32px">📧</span>
+                  </div>
+
+                  <h1 class="auth-headline" style="font-size:24px;margin-bottom:10px;text-align:center">
+                    Check your email 📧
                   </h1>
-                  <p class="auth-subtext" style="font-size:13.5px;margin-bottom:0">
-                    ${authTab === 'signin' 
-                      ? 'Sign in to access your grammar mastery lessons, AI coaching, and curriculum progress.' 
-                      : 'Join the Grammar Learning Hub. Email verification is required before access is granted.'}
+
+                  <div style="font-size:15px;font-weight:700;color:#f8fafc;margin-bottom:14px;padding:14px 18px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:12px;line-height:1.5;text-align:center">
+                    We've sent a secure login link to your email address.
+                  </div>
+
+                  <p class="auth-subtext" style="font-size:13.5px;color:#cbd5e1;line-height:1.6;margin-bottom:20px;text-align:center">
+                    Recipient: <strong style="color:#c4b5fd;font-size:14.5px;word-break:break-all">${esc(defaultEmail || "your email")}</strong><br>
+                    <span style="font-size:12px;color:var(--mu);margin-top:6px;display:inline-block">If the email is eligible for email authentication, a secure link has been sent.</span>
                   </p>
-                </div>
 
-                <!-- Segmented Tab Toggle -->
-                <div class="auth-tabs">
-                  <button type="button" class="auth-tab-btn ${authTab === 'signin' ? 'active' : ''}" onclick="switchAuthTab('signin')">Sign In</button>
-                  <button type="button" class="auth-tab-btn ${authTab === 'signup' ? 'active' : ''}" onclick="switchAuthTab('signup')">Create Account</button>
-                </div>
+                  <div id="magic-sent-alert" class="auth-alert-box" style="margin-bottom:16px"></div>
 
-                <!-- Alert Message Area -->
-                <div id="auth-alert" class="auth-alert-box"></div>
+                  <div style="display:flex;flex-direction:column;gap:12px">
+                    <button type="button" class="auth-demo-btn" id="magic-resend-btn" onclick="handleResendMagicLink()" style="padding:13px;border-color:rgba(139,92,246,0.45)">
+                      <span id="magic-resend-text">Resend Link</span>
+                    </button>
 
-                <!-- Auth Form -->
-                <form id="auth-form" onsubmit="handleAuthSubmit(event)">
-                  ${authTab === 'signup' ? `
-                    <label class="auth-field-label">Full Name</label>
+                    <button type="button" class="g" onclick="switchAuthTab('signin')" style="padding:12px;background:transparent;border:1px solid rgba(255,255,255,0.12);color:#94a3b8;border-radius:12px;cursor:pointer;font-weight:600;font-size:14px">
+                      ← Back to Login
+                    </button>
+                  </div>
+
+                  <div style="margin-top:22px;padding-top:16px;border-top:1px solid rgba(139,92,246,0.18);font-size:13px;color:#94a3b8;line-height:1.6;text-align:center">
+                    <p style="margin:0 0 6px;color:#cbd5e1">Didn't receive the email? Check your spam/junk folder.</p>
+                    <p style="margin:0;font-size:12px;color:#64748b">Click the link in your email to open the Grammar Hub directly.</p>
+                  </div>
+
+                ` : authTab === 'magiclink' ? `
+                  <!-- Passwordless Magic Link Form -->
+                  <div style="margin-bottom:20px">
+                    <h1 class="auth-headline" style="font-size:23px;margin-bottom:8px">Login with Email Link</h1>
+                    <p class="auth-subtext" style="font-size:13.5px;margin-bottom:0">
+                      Enter your email address and we'll send a secure one-time login link directly to your inbox.
+                    </p>
+                  </div>
+
+                  <div class="auth-tabs">
+                    <button type="button" class="auth-tab-btn" onclick="switchAuthTab('signin')">Password Login</button>
+                    <button type="button" class="auth-tab-btn active" onclick="switchAuthTab('magiclink')">Email Link 📧</button>
+                  </div>
+
+                  <div id="auth-alert" class="auth-alert-box"></div>
+
+                  <form id="magic-form" onsubmit="handleMagicLinkSubmit(event)">
+                    <label class="auth-field-label">Email Address</label>
                     <div class="auth-input-wrapper">
-                      <span class="input-icon">👤</span>
-                      <input type="text" id="auth-name" placeholder="e.g. Brajesh Kushwaha" value="${esc(displayName)}" required autocomplete="name">
+                      <span class="input-icon">✉️</span>
+                      <input type="email" id="magic-email" placeholder="name@example.com" value="${esc(defaultEmail)}" required autocomplete="username">
                     </div>
-                  ` : ''}
 
-                  <label class="auth-field-label">Email Address</label>
-                  <div class="auth-input-wrapper">
-                    <span class="input-icon">✉️</span>
-                    <input type="email" id="auth-email" placeholder="name@example.com" value="${esc(defaultEmail)}" required autocomplete="username">
+                    <button type="submit" class="auth-primary-btn" id="magic-submit-btn" style="padding:14px">
+                      <span>Send Login Link</span>
+                      <span style="font-size:17px">➔</span>
+                    </button>
+                  </form>
+
+                  <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px">
+                    <button type="button" class="g" onclick="switchAuthTab('signin')" style="padding:11px;background:transparent;border:1px solid rgba(255,255,255,0.12);color:#94a3b8;border-radius:12px;cursor:pointer;font-weight:600;font-size:13.5px">
+                      ← Back to Password Login
+                    </button>
                   </div>
 
-                  <label class="auth-field-label">Password</label>
-                  <div class="auth-input-wrapper">
-                    <span class="input-icon">🔒</span>
-                    <input type="password" id="auth-pass" placeholder="••••••••••••" required autocomplete="${authTab === 'signup' ? 'new-password' : 'current-password'}">
-                    <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility('auth-pass', 'auth-eye-btn')" title="Show/Hide Password" id="auth-eye-btn">👁️</button>
+                  <div style="margin-top:22px;text-align:center;font-size:13px;color:var(--mu)">
+                    Don't have an account? <a onclick="switchAuthTab('signup')" style="color:#a78bfa;font-weight:700;cursor:pointer">Create Account</a>
                   </div>
 
-                  ${authTab === 'signup' ? `
-                    <label class="auth-field-label">Confirm Password</label>
+                ` : `
+                  <!-- Standard Sign In or Sign Up Form -->
+                  <div style="margin-bottom:20px">
+                    <h1 class="auth-headline" style="font-size:23px;margin-bottom:8px">
+                      ${authTab === 'signin' ? 'Welcome Back to Grammar Hub' : 'Create Your Account'}
+                    </h1>
+                    <p class="auth-subtext" style="font-size:13.5px;margin-bottom:0">
+                      ${authTab === 'signin' 
+                        ? 'Sign in to access your grammar mastery lessons, AI coaching, and curriculum progress.' 
+                        : 'Join the Grammar Learning Hub. Email verification is required before access is granted.'}
+                    </p>
+                  </div>
+
+                  <!-- Segmented Tab Toggle -->
+                  <div class="auth-tabs">
+                    <button type="button" class="auth-tab-btn ${authTab === 'signin' ? 'active' : ''}" onclick="switchAuthTab('signin')">Sign In</button>
+                    <button type="button" class="auth-tab-btn ${authTab === 'signup' ? 'active' : ''}" onclick="switchAuthTab('signup')">Create Account</button>
+                  </div>
+
+                  <!-- Alert Message Area -->
+                  <div id="auth-alert" class="auth-alert-box"></div>
+
+                  <!-- Auth Form -->
+                  <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                    ${authTab === 'signup' ? `
+                      <label class="auth-field-label">Full Name</label>
+                      <div class="auth-input-wrapper">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="auth-name" placeholder="e.g. Brajesh Kushwaha" value="${esc(displayName)}" required autocomplete="name">
+                      </div>
+                    ` : ''}
+
+                    <label class="auth-field-label">Email Address</label>
+                    <div class="auth-input-wrapper">
+                      <span class="input-icon">✉️</span>
+                      <input type="email" id="auth-email" placeholder="name@example.com" value="${esc(defaultEmail)}" required autocomplete="username">
+                    </div>
+
+                    <label class="auth-field-label">Password</label>
                     <div class="auth-input-wrapper">
                       <span class="input-icon">🔒</span>
-                      <input type="password" id="auth-confirm-pass" placeholder="••••••••••••" required autocomplete="new-password">
-                      <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility('auth-confirm-pass', 'auth-confirm-eye-btn')" title="Show/Hide Password" id="auth-confirm-eye-btn">👁️</button>
+                      <input type="password" id="auth-pass" placeholder="••••••••••••" required autocomplete="${authTab === 'signup' ? 'new-password' : 'current-password'}">
+                      <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility('auth-pass', 'auth-eye-btn')" title="Show/Hide Password" id="auth-eye-btn">👁️</button>
                     </div>
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px">
-                      <div>
-                        <label class="auth-field-label">Current Level</label>
-                        <div class="auth-input-wrapper" style="margin-bottom:12px">
-                          <select id="auth-level" style="padding-left:14px">
-                            <option value="0">Beginner (Hesitant)</option>
-                            <option value="1">Elementary (Can Understand)</option>
-                            <option value="2" selected>Intermediate (Simple Sentences)</option>
-                            <option value="3">Conversational (Daily English)</option>
-                            <option value="4">Advanced (Wants Fluency)</option>
-                          </select>
+                    ${authTab === 'signup' ? `
+                      <label class="auth-field-label">Confirm Password</label>
+                      <div class="auth-input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="auth-confirm-pass" placeholder="••••••••••••" required autocomplete="new-password">
+                        <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility('auth-confirm-pass', 'auth-confirm-eye-btn')" title="Show/Hide Password" id="auth-confirm-eye-btn">👁️</button>
+                      </div>
+
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px">
+                        <div>
+                          <label class="auth-field-label">Current Level</label>
+                          <div class="auth-input-wrapper" style="margin-bottom:12px">
+                            <select id="auth-level" style="padding-left:14px">
+                              <option value="0">Beginner (Hesitant)</option>
+                              <option value="1">Elementary (Can Understand)</option>
+                              <option value="2" selected>Intermediate (Simple Sentences)</option>
+                              <option value="3">Conversational (Daily English)</option>
+                              <option value="4">Advanced (Wants Fluency)</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label class="auth-field-label">Primary Goal</label>
+                          <div class="auth-input-wrapper" style="margin-bottom:12px">
+                            <select id="auth-goal" style="padding-left:14px">
+                              <option value="Job Interview" selected>Job & Placement</option>
+                              <option value="Technical Interview">Technical Interview</option>
+                              <option value="Daily Conversation">Daily Conversation</option>
+                              <option value="College Presentation">College & Studies</option>
+                              <option value="Fluency & Confidence">Fluency & Confidence</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <label class="auth-field-label">Primary Goal</label>
-                        <div class="auth-input-wrapper" style="margin-bottom:12px">
-                          <select id="auth-goal" style="padding-left:14px">
-                            <option value="Job Interview" selected>Job & Placement</option>
-                            <option value="Technical Interview">Technical Interview</option>
-                            <option value="Daily Conversation">Daily Conversation</option>
-                            <option value="College Presentation">College & Studies</option>
-                            <option value="Fluency & Confidence">Fluency & Confidence</option>
-                          </select>
-                        </div>
+                    ` : `
+                      <!-- Remember Me & Forgot Password Row -->
+                      <div class="auth-options-row">
+                        <label class="auth-remember-label">
+                          <input type="checkbox" id="auth-remember" checked>
+                          <span>Remember me</span>
+                        </label>
+                        <a class="auth-forgot-link" onclick="showForgotPasswordModal()">Forgot password?</a>
                       </div>
+                    `}
+
+                    <!-- Primary Submit Button -->
+                    <button type="submit" class="auth-primary-btn" id="auth-submit-btn">
+                      <span>${authTab === 'signin' ? 'Login' : 'Create Account'}</span>
+                      <span style="font-size:17px">➔</span>
+                    </button>
+                  </form>
+
+                  ${authTab === 'signin' ? `
+                    <!-- Divider -->
+                    <div class="auth-divider" style="margin:18px 0;display:flex;align-items:center;text-align:center;color:var(--mu);font-size:12px;font-weight:700">
+                      <span style="flex:1;border-bottom:1px solid rgba(139,92,246,0.22);margin-right:12px"></span>
+                      OR
+                      <span style="flex:1;border-bottom:1px solid rgba(139,92,246,0.22);margin-left:12px"></span>
                     </div>
+
+                    <!-- Login with Email Link Button -->
+                    <button type="button" class="auth-magic-link-btn" onclick="switchAuthTab('magiclink')">
+                      <span>📧 Login with Email Link</span>
+                    </button>
                   ` : ''}
 
-                  <!-- Remember Me & Forgot Password Row -->
-                  <div class="auth-options-row">
-                    <label class="auth-remember-label">
-                      <input type="checkbox" id="auth-remember" checked>
-                      <span>Remember me</span>
-                    </label>
-                    <a class="auth-forgot-link" onclick="showForgotPasswordModal()">Forgot password?</a>
+                  <!-- Footer Byline -->
+                  <div style="margin-top:22px;text-align:center;font-size:13px;color:var(--mu)">
+                    ${authTab === 'signin' 
+                      ? `Don't have an account? <a onclick="switchAuthTab('signup')" style="color:#a78bfa;font-weight:700;cursor:pointer">Create Account</a>` 
+                      : `Already have an account? <a onclick="switchAuthTab('signin')" style="color:#a78bfa;font-weight:700;cursor:pointer">Sign In</a>`}
                   </div>
-
-                  <!-- Primary Submit Button -->
-                  <button type="submit" class="auth-primary-btn" id="auth-submit-btn">
-                    <span>${authTab === 'signin' ? 'Sign In' : 'Create Account'}</span>
-                    <span style="font-size:17px">➔</span>
-                  </button>
-                </form>
-
-                <!-- Footer Byline -->
-                <div style="margin-top:22px;text-align:center;font-size:13px;color:var(--mu)">
-                  ${authTab === 'signin' 
-                    ? `Don't have an account? <a onclick="switchAuthTab('signup')" style="color:#a78bfa;font-weight:700;cursor:pointer">Create New Account</a>` 
-                    : `Already have an account? <a onclick="switchAuthTab('signin')" style="color:#a78bfa;font-weight:700;cursor:pointer">Sign In</a>`}
-                </div>
+                `}
               </div>
 
               <!-- Right Column — 3D Cybernetic Head Visualizer -->
@@ -4973,6 +5299,10 @@
             </div>
           </div>
         `;
+
+        if (authTab === 'magiclink_sent') {
+          startMagicResendCooldownTracker();
+        }
       };
 
       R.login = R.splash;
@@ -5000,8 +5330,8 @@
                     </svg>
                   </div>
                   <div style="text-align:left">
-                    <div style="font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#fff">Grammar Learning Hub</div>
-                    <div style="font-size:12px;color:#a78bfa;font-weight:600">Secure Supabase Authentication</div>
+                    <div style="font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#fff">Grammar Learning Hub 📚</div>
+                    <div style="font-size:12px;color:#a78bfa;font-weight:600">Email Verification Required</div>
                   </div>
                 </div>
 
@@ -5033,6 +5363,10 @@
                     <span id="verify-resend-text">Resend Verification Email</span>
                   </button>
 
+                  <button type="button" class="auth-magic-link-btn" onclick="switchAuthTab('magiclink')" style="padding:13px">
+                    <span>📧 Login with Email Link</span>
+                  </button>
+
                   <button type="button" class="g" onclick="go('login')" style="padding:12px;background:transparent;border:1px solid rgba(255,255,255,0.12);color:#94a3b8;border-radius:12px;cursor:pointer;font-weight:600;font-size:14px">
                     ← Back to Login
                   </button>
@@ -5049,6 +5383,99 @@
         `;
 
         startResendCooldownTracker();
+      };
+
+      // Dedicated /auth/callback route for Email Magic Link
+      R['auth/callback'] = async () => {
+        touch();
+        document.body.classList.add('auth-mode');
+        updateTopHeader();
+
+        A.innerHTML = `
+          <div class="auth-split-wrapper">
+            <div class="auth-split-grid" style="max-width:520px;margin:40px auto;display:block">
+              <div class="auth-form-card" style="padding:42px 34px;text-align:center" id="callback-card">
+                <div style="margin:20px auto 16px;width:72px;height:72px;border-radius:50%;background:rgba(139,92,246,0.15);border:2px solid rgba(139,92,246,0.4);display:flex;align-items:center;justify-content:center">
+                  <span class="spinner" style="font-size:32px;display:inline-block;animation:spin 1s linear infinite">⏳</span>
+                </div>
+                <h2 style="font-size:22px;margin:0 0 10px;color:#fff">Validating Login Link...</h2>
+                <p style="font-size:14px;color:#cbd5e1;line-height:1.6">
+                  Establishing your secure session with Supabase. Please wait a moment...
+                </p>
+              </div>
+            </div>
+          </div>
+        `;
+
+        try {
+          const res = await BoloAuth.processAuthCallback();
+          const card = $('#callback-card');
+
+          if (res.success && BoloAuth.isVerified()) {
+            // Never expose tokens in the UI: clean address bar
+            try {
+              history.replaceState(null, '', window.location.pathname + '#grammar-hub');
+            } catch (e) {}
+
+            if (card) {
+              card.innerHTML = `
+                <div style="margin:20px auto 16px;width:72px;height:72px;border-radius:50%;background:rgba(16,185,129,0.15);border:2px solid rgba(16,185,129,0.4);display:flex;align-items:center;justify-content:center">
+                  <span style="font-size:32px">✅</span>
+                </div>
+                <h2 style="font-size:22px;margin:0 0 10px;color:#6ee7b7">Authentication Successful!</h2>
+                <p style="font-size:14px;color:#cbd5e1;line-height:1.6">
+                  Welcome back! Loading Grammar Learning Hub...
+                </p>
+              `;
+            }
+
+            setTimeout(() => {
+              go('grammar');
+            }, 500);
+          } else {
+            // Invalid / expired link
+            try {
+              history.replaceState(null, '', window.location.pathname + '#login');
+            } catch (e) {}
+
+            if (card) {
+              card.innerHTML = `
+                <div style="margin:20px auto 16px;width:72px;height:72px;border-radius:50%;background:rgba(239,68,68,0.15);border:2px solid rgba(239,68,68,0.4);display:flex;align-items:center;justify-content:center">
+                  <span style="font-size:32px">⚠️</span>
+                </div>
+                <h2 style="font-size:22px;margin:0 0 10px;color:#fca5a5">Authentication Link Expired or Invalid</h2>
+                <p style="font-size:14px;color:#cbd5e1;line-height:1.6;margin-bottom:22px">
+                  ${esc(res.error || "The login link is invalid, expired, or has already been used. Please request a new login link.")}
+                </p>
+                <div style="display:flex;flex-direction:column;gap:12px">
+                  <button type="button" class="auth-primary-btn" onclick="switchAuthTab('magiclink')" style="padding:13px">
+                    <span>Request New Email Link</span>
+                    <span style="font-size:16px">➔</span>
+                  </button>
+                  <button type="button" class="g" onclick="go('login')" style="padding:11px;background:transparent;border:1px solid rgba(255,255,255,0.12);color:#94a3b8;border-radius:12px;cursor:pointer;font-weight:600">
+                    ← Back to Login
+                  </button>
+                </div>
+              `;
+            }
+          }
+        } catch (err) {
+          const card = $('#callback-card');
+          if (card) {
+            card.innerHTML = `
+              <div style="margin:20px auto 16px;width:72px;height:72px;border-radius:50%;background:rgba(239,68,68,0.15);border:2px solid rgba(239,68,68,0.4);display:flex;align-items:center;justify-content:center">
+                <span style="font-size:32px">⚠️</span>
+              </div>
+              <h2 style="font-size:22px;margin:0 0 10px;color:#fca5a5">Authentication Failed</h2>
+              <p style="font-size:14px;color:#cbd5e1;line-height:1.6;margin-bottom:20px">
+                Something went wrong validating your login link. Please try again.
+              </p>
+              <button type="button" class="auth-primary-btn" onclick="go('login')" style="padding:13px">
+                Back to Login
+              </button>
+            `;
+          }
+        }
       };
 
       function switchAuthTab(tab) {
@@ -5073,7 +5500,7 @@
         const al = $('#auth-alert');
         if (!al) return;
         al.className = 'auth-alert-box ' + type;
-        al.innerHTML = (type === 'error' ? '⚠️ ' : '✅ ') + esc(msg);
+        al.innerHTML = (type === 'error' ? '⚠️ ' : '✅ ') + msg;
       }
 
       async function handleAuthSubmit(e) {
@@ -5150,7 +5577,7 @@
             }, 400);
 
           } else {
-            // Sign In
+            // Sign In with Password
             const res = await BoloAuth.signIn(rawEmail, password);
 
             if (res.unverified) {
@@ -5162,11 +5589,14 @@
             }
 
             if (!res.success) {
-              showAuthAlert(res.error || "Invalid email or password. Please try again.");
+              // Strict Security Rule: Offer email magic-link fallback if password fails!
+              showAuthAlert(
+                `Invalid email or password. You can also <a onclick="switchAuthTab('magiclink')" style="color:#a78bfa;font-weight:700;text-decoration:underline;cursor:pointer">Login with Email Link 📧</a>.`
+              );
               if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.style.opacity = '1';
-                submitBtn.innerHTML = `<span>Sign In</span><span style="font-size:17px">➔</span>`;
+                submitBtn.innerHTML = `<span>Login</span><span style="font-size:17px">➔</span>`;
               }
               return;
             }
@@ -5182,9 +5612,74 @@
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.style.opacity = '1';
-            submitBtn.innerHTML = `<span>${authTab === 'signin' ? 'Sign In' : 'Create Account'}</span><span style="font-size:17px">➔</span>`;
+            submitBtn.innerHTML = `<span>${authTab === 'signin' ? 'Login' : 'Create Account'}</span><span style="font-size:17px">➔</span>`;
           }
         }
+      }
+
+      async function handleMagicLinkSubmit(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        const emailInput = $('#magic-email');
+        const submitBtn = $('#magic-submit-btn');
+
+        if (!emailInput || !emailInput.value.trim()) {
+          showAuthAlert("Please enter your email address.");
+          return;
+        }
+        const email = emailInput.value.trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          showAuthAlert("Please enter a valid email address (e.g. name@example.com).");
+          return;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = '0.7';
+          submitBtn.innerHTML = `<span>Sending login link...</span><span class="spinner" style="display:inline-block;animation:spin 1s linear infinite">⏳</span>`;
+        }
+
+        try {
+          const res = await BoloAuth.sendMagicLink(email);
+          if (!res.success) {
+            showAuthAlert(res.error || "Unable to send login link. Please retry.");
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.style.opacity = '1';
+              submitBtn.innerHTML = `<span>Send Login Link</span><span style="font-size:17px">➔</span>`;
+            }
+            return;
+          }
+
+          // Transition to Check your email screen
+          switchAuthTab('magiclink_sent');
+        } catch (err) {
+          showAuthAlert("Connection error: " + (err.message || "Please retry."));
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.innerHTML = `<span>Send Login Link</span><span style="font-size:17px">➔</span>`;
+          }
+        }
+      }
+
+      async function handleResendMagicLink() {
+        const alertBox = $('#magic-sent-alert');
+        const targetEmail = BoloAuth.pendingMagicEmail || (BoloAuth.user && BoloAuth.user.email) || "";
+
+        const res = await BoloAuth.sendMagicLink(targetEmail);
+        if (res.success) {
+          if (alertBox) {
+            alertBox.className = 'auth-alert-box success';
+            alertBox.innerHTML = '✅ ' + esc(res.message);
+          }
+        } else {
+          if (alertBox) {
+            alertBox.className = 'auth-alert-box error';
+            alertBox.innerHTML = '⚠️ ' + esc(res.error || 'Failed to resend login link.');
+          }
+        }
+        startMagicResendCooldownTracker();
       }
 
       async function handleVerifyCheck() {
@@ -5236,7 +5731,7 @@
       }
 
       function showForgotPasswordModal() {
-        const defaultEmail = ($('#auth-email') && $('#auth-email').value.trim()) || (BoloAuth.user && BoloAuth.user.email) || "";
+        const defaultEmail = ($('#auth-email') && $('#auth-email').value.trim()) || ($('#magic-email') && $('#magic-email').value.trim()) || (BoloAuth.user && BoloAuth.user.email) || "";
         showModal(`
           <div style="text-align:center;padding:14px 6px">
             <div style="font-size:42px;margin-bottom:12px">🔑</div>
@@ -5303,6 +5798,8 @@
       window.switchAuthTab = switchAuthTab;
       window.toggleAuthPasswordVisibility = toggleAuthPasswordVisibility;
       window.handleAuthSubmit = handleAuthSubmit;
+      window.handleMagicLinkSubmit = handleMagicLinkSubmit;
+      window.handleResendMagicLink = handleResendMagicLink;
       window.handleVerifyCheck = handleVerifyCheck;
       window.handleResendVerification = handleResendVerification;
       window.showForgotPasswordModal = showForgotPasswordModal;
@@ -13797,10 +14294,13 @@ Return ONLY a JSON object:
         await BoloAuth.init();
 
         const initialHash = (window.location.hash || "").replace(/^#/, "");
+        const initialSearch = (window.location.search || "");
         let targetView = "grammar";
         let targetArg = null;
 
-        if (initialHash) {
+        if (initialHash.includes("auth/callback") || initialHash.includes("access_token=") || initialHash.includes("type=magiclink") || initialSearch.includes("code=")) {
+          targetView = "auth/callback";
+        } else if (initialHash) {
           const initialResolved = resolveRouteName(initialHash);
           targetView = initialResolved.view;
           targetArg = initialResolved.arg;

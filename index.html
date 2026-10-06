@@ -14,6 +14,7 @@
     />
     <title>Bolo – English Speaking Partner</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
       if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
         var _s = document.createElement("script");
@@ -2407,6 +2408,487 @@
         bucket: "bolo_cloud",
       };
 
+      // =========================================================================
+      // SUPABASE AUTH SYSTEM (MANDATORY EMAIL VERIFICATION & ROUTE GUARDS)
+      // =========================================================================
+      const BoloAuth = {
+        client: null,
+        user: null,
+        session: null,
+        pendingEmail: (typeof localStorage !== "undefined" && localStorage.getItem("bolo_auth_pending_email")) || "",
+        resendCooldownEnd: parseInt((typeof localStorage !== "undefined" && localStorage.getItem("bolo_resend_cooldown_end")) || "0", 10),
+        initialized: false,
+        initPromise: null,
+
+        getClient() {
+          if (!this.client && typeof window !== "undefined" && window.supabase && window.supabase.createClient) {
+            try {
+              this.client = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.publishableKey, {
+                auth: {
+                  persistSession: true,
+                  autoRefreshToken: true,
+                  detectSessionInUrl: true,
+                }
+              });
+            } catch (err) {
+              console.warn("Error creating Supabase client:", err);
+            }
+          }
+          return this.client;
+        },
+
+        async init() {
+          if (this.initPromise) return this.initPromise;
+          this.initPromise = (async () => {
+            const sb = this.getClient();
+
+            // Check if URL contains verification hash/tokens from confirmation link
+            const hash = (typeof window !== "undefined" && window.location.hash) || "";
+            const search = (typeof window !== "undefined" && window.location.search) || "";
+            const hasAuthTokens = hash.includes("access_token=") || hash.includes("type=signup") || hash.includes("type=recovery") || search.includes("code=");
+
+            if (sb) {
+              try {
+                const { data } = await sb.auth.getSession();
+                if (data && data.session && data.session.user) {
+                  this.session = data.session;
+                  this.user = data.session.user;
+                }
+              } catch (e) {
+                console.warn("getSession error:", e);
+              }
+
+              try {
+                sb.auth.onAuthStateChange(async (event, session) => {
+                  if (session && session.user) {
+                    this.session = session;
+                    this.user = session.user;
+                    if (this.isVerified()) {
+                      this.pendingEmail = "";
+                      try { localStorage.removeItem("bolo_auth_pending_email"); } catch (e) {}
+                      this.syncUserData();
+                    }
+                  } else if (event === "SIGNED_OUT") {
+                    this.session = null;
+                    this.user = null;
+                  }
+                });
+              } catch (e) {}
+            } else {
+              await this.restRestoreSession();
+            }
+
+            // If user verified from incoming email link
+            if (hasAuthTokens && this.isVerified()) {
+              this.pendingEmail = "";
+              try {
+                localStorage.removeItem("bolo_auth_pending_email");
+                history.replaceState(null, "", window.location.pathname + "#grammar-hub");
+              } catch (e) {}
+              this.syncUserData();
+            }
+
+            this.initialized = true;
+            return this.user;
+          })();
+          return this.initPromise;
+        },
+
+        syncUserData() {
+          if (this.user && typeof S !== "undefined") {
+            S.userId = this.user.id;
+            const meta = this.user.user_metadata || {};
+            const fullName = meta.full_name || meta.name || (this.user.email ? this.user.email.split("@")[0] : "");
+            if (fullName && (!S.name || S.name === "brajesh_main" || S.name === "Student")) {
+              S.name = fullName;
+            }
+            if (typeof saveLocalOnly === "function") saveLocalOnly();
+          }
+        },
+
+        isAuthenticated() {
+          return Boolean(this.user);
+        },
+
+        isVerified() {
+          if (!this.user) return false;
+          return Boolean(this.user.email_confirmed_at || this.user.confirmed_at);
+        },
+
+        getCooldownRemaining() {
+          const now = Date.now();
+          if (this.resendCooldownEnd && this.resendCooldownEnd > now) {
+            return Math.ceil((this.resendCooldownEnd - now) / 1000);
+          }
+          return 0;
+        },
+
+        setCooldown(seconds = 60) {
+          this.resendCooldownEnd = Date.now() + (seconds * 1000);
+          try {
+            localStorage.setItem("bolo_resend_cooldown_end", this.resendCooldownEnd.toString());
+          } catch (e) {}
+        },
+
+        async signUp(fullName, email, password) {
+          const cleanEmail = email.trim().toLowerCase();
+          const cleanName = fullName.trim();
+          const sb = this.getClient();
+
+          if (sb) {
+            const redirectUrl = window.location.origin + window.location.pathname;
+            const { data, error } = await sb.auth.signUp({
+              email: cleanEmail,
+              password: password,
+              options: {
+                data: {
+                  full_name: cleanName,
+                  name: cleanName,
+                },
+                emailRedirectTo: redirectUrl
+              }
+            });
+
+            if (error) {
+              let msg = error.message || "Failed to create account.";
+              if (msg.toLowerCase().includes("rate limit") || error.status === 429) {
+                msg = "Email rate limit reached. Please wait a minute before requesting another verification email.";
+              }
+              return { success: false, error: msg };
+            }
+
+            this.pendingEmail = cleanEmail;
+            try {
+              localStorage.setItem("bolo_auth_pending_email", cleanEmail);
+            } catch (e) {}
+            this.setCooldown(60);
+
+            if (data && data.user && (data.user.email_confirmed_at || data.user.confirmed_at)) {
+              this.user = data.user;
+              this.session = data.session;
+              this.syncUserData();
+              return { success: true, verified: true };
+            }
+
+            return {
+              success: true,
+              verified: false,
+              email: cleanEmail,
+              message: "Account created! A verification link has been sent to your email."
+            };
+          } else {
+            return await this.restSignUp(cleanName, cleanEmail, password);
+          }
+        },
+
+        async signIn(email, password) {
+          const cleanEmail = email.trim().toLowerCase();
+          const sb = this.getClient();
+
+          if (sb) {
+            const { data, error } = await sb.auth.signInWithPassword({
+              email: cleanEmail,
+              password: password
+            });
+
+            if (error) {
+              const msg = (error.message || "").toLowerCase();
+              const code = error.code || "";
+              if (msg.includes("email not confirmed") || code === "email_not_confirmed") {
+                this.pendingEmail = cleanEmail;
+                try {
+                  localStorage.setItem("bolo_auth_pending_email", cleanEmail);
+                } catch (e) {}
+                return {
+                  success: false,
+                  unverified: true,
+                  email: cleanEmail,
+                  error: "Please verify your email address to continue."
+                };
+              }
+              return {
+                success: false,
+                error: "Invalid email or password. Please try again."
+              };
+            }
+
+            if (data && data.user) {
+              this.user = data.user;
+              this.session = data.session;
+
+              if (!this.isVerified()) {
+                this.pendingEmail = cleanEmail;
+                try {
+                  localStorage.setItem("bolo_auth_pending_email", cleanEmail);
+                } catch (e) {}
+                return {
+                  success: false,
+                  unverified: true,
+                  email: cleanEmail,
+                  error: "Please verify your email address to continue."
+                };
+              }
+
+              this.pendingEmail = "";
+              try {
+                localStorage.removeItem("bolo_auth_pending_email");
+              } catch (e) {}
+              this.syncUserData();
+              return { success: true, verified: true, user: this.user };
+            }
+
+            return { success: false, error: "Authentication failed. Please try again." };
+          } else {
+            return await this.restSignIn(cleanEmail, password);
+          }
+        },
+
+        async checkStatus() {
+          const sb = this.getClient();
+          if (sb) {
+            try {
+              const { data } = await sb.auth.getUser();
+              if (data && data.user) {
+                this.user = data.user;
+                if (this.isVerified()) {
+                  this.pendingEmail = "";
+                  try {
+                    localStorage.removeItem("bolo_auth_pending_email");
+                  } catch (e) {}
+                  this.syncUserData();
+                  return { verified: true, user: this.user };
+                }
+              }
+            } catch (e) {}
+          } else {
+            await this.restGetUser();
+            if (this.isVerified()) {
+              return { verified: true, user: this.user };
+            }
+          }
+          return { verified: false };
+        },
+
+        async resendVerification(targetEmail) {
+          const email = (targetEmail || this.pendingEmail || (this.user && this.user.email) || "").trim().toLowerCase();
+          if (!email) {
+            return { success: false, error: "No email address found to resend verification to." };
+          }
+
+          const remaining = this.getCooldownRemaining();
+          if (remaining > 0) {
+            return {
+              success: false,
+              error: `Resend available in ${remaining} seconds.`
+            };
+          }
+
+          const sb = this.getClient();
+          if (sb) {
+            const redirectUrl = window.location.origin + window.location.pathname;
+            const { error } = await sb.auth.resend({
+              type: "signup",
+              email: email,
+              options: {
+                emailRedirectTo: redirectUrl
+              }
+            });
+
+            if (error) {
+              let msg = error.message || "Failed to resend verification email.";
+              if (msg.toLowerCase().includes("rate limit") || error.status === 429) {
+                msg = "Email rate limit exceeded. Please wait 60 seconds.";
+              }
+              this.setCooldown(60);
+              return { success: false, error: msg };
+            }
+
+            this.setCooldown(60);
+            return {
+              success: true,
+              message: "A fresh verification link has been sent to your email address."
+            };
+          } else {
+            return await this.restResend(email);
+          }
+        },
+
+        async resetPassword(email) {
+          const cleanEmail = (email || "").trim().toLowerCase();
+          if (!cleanEmail) {
+            return { success: false, error: "Please enter your email address." };
+          }
+
+          const sb = this.getClient();
+          if (sb) {
+            const redirectUrl = window.location.origin + window.location.pathname;
+            try {
+              await sb.auth.resetPasswordForEmail(cleanEmail, {
+                redirectTo: redirectUrl
+              });
+            } catch (e) {}
+            return {
+              success: true,
+              message: "If an account exists for this email, password reset instructions have been sent to your inbox."
+            };
+          } else {
+            return await this.restRecover(cleanEmail);
+          }
+        },
+
+        async signOut() {
+          const sb = this.getClient();
+          if (sb) {
+            try {
+              await sb.auth.signOut();
+            } catch (e) {}
+          }
+          this.user = null;
+          this.session = null;
+          this.pendingEmail = "";
+          try {
+            localStorage.removeItem("bolo_auth_pending_email");
+            localStorage.removeItem("bolo_supabase_token");
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith("sb-") || k.includes("supabase"))) {
+                localStorage.removeItem(k);
+              }
+            }
+          } catch (e) {}
+        },
+
+        // REST fallback implementations
+        async restSignUp(fullName, email, password) {
+          try {
+            const res = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/signup`, {
+              method: "POST",
+              headers: {
+                "apikey": SUPABASE_CONFIG.publishableKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                email,
+                password,
+                data: { full_name: fullName, name: fullName }
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              return { success: false, error: data.msg || data.error_description || "Signup failed." };
+            }
+            this.pendingEmail = email;
+            try { localStorage.setItem("bolo_auth_pending_email", email); } catch (e) {}
+            this.setCooldown(60);
+            return { success: true, verified: false, email };
+          } catch (err) {
+            return { success: false, error: "Network error during signup." };
+          }
+        },
+
+        async restSignIn(email, password) {
+          try {
+            const res = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/token?grant_type=password`, {
+              method: "POST",
+              headers: {
+                "apikey": SUPABASE_CONFIG.publishableKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              const msg = (data.msg || data.error_description || "").toLowerCase();
+              if (msg.includes("email not confirmed") || data.error_code === "email_not_confirmed") {
+                this.pendingEmail = email;
+                try { localStorage.setItem("bolo_auth_pending_email", email); } catch (e) {}
+                return { success: false, unverified: true, email };
+              }
+              return { success: false, error: "Invalid email or password. Please try again." };
+            }
+            if (data.user) {
+              this.user = data.user;
+              this.session = data;
+              try { localStorage.setItem("bolo_supabase_token", JSON.stringify(data)); } catch (e) {}
+              if (!this.isVerified()) {
+                this.pendingEmail = email;
+                try { localStorage.setItem("bolo_auth_pending_email", email); } catch (e) {}
+                return { success: false, unverified: true, email };
+              }
+              this.pendingEmail = "";
+              try { localStorage.removeItem("bolo_auth_pending_email"); } catch (e) {}
+              this.syncUserData();
+              return { success: true, verified: true, user: this.user };
+            }
+            return { success: false, error: "Login failed." };
+          } catch (err) {
+            return { success: false, error: "Network error during login." };
+          }
+        },
+
+        async restResend(email) {
+          try {
+            await fetch(`${SUPABASE_CONFIG.url}/auth/v1/resend`, {
+              method: "POST",
+              headers: {
+                "apikey": SUPABASE_CONFIG.publishableKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ type: "signup", email })
+            });
+            this.setCooldown(60);
+            return { success: true, message: "A fresh verification link has been sent to your email." };
+          } catch (err) {
+            return { success: false, error: "Failed to resend verification link." };
+          }
+        },
+
+        async restRecover(email) {
+          try {
+            await fetch(`${SUPABASE_CONFIG.url}/auth/v1/recover`, {
+              method: "POST",
+              headers: {
+                "apikey": SUPABASE_CONFIG.publishableKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ email })
+            });
+            return { success: true, message: "If an account exists for this email, password reset instructions have been sent to your inbox." };
+          } catch (err) {
+            return { success: true, message: "If an account exists for this email, password reset instructions have been sent to your inbox." };
+          }
+        },
+
+        async restGetUser() {
+          try {
+            const tokenStr = localStorage.getItem("bolo_supabase_token");
+            if (!tokenStr) return null;
+            const token = JSON.parse(tokenStr);
+            if (!token.access_token) return null;
+            const res = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/user`, {
+              headers: {
+                "apikey": SUPABASE_CONFIG.publishableKey,
+                "Authorization": `Bearer ${token.access_token}`
+              }
+            });
+            if (res.ok) {
+              const u = await res.json();
+              this.user = u;
+              return u;
+            }
+          } catch (e) {}
+          return null;
+        },
+
+        async restRestoreSession() {
+          const u = await this.restGetUser();
+          if (u && this.isVerified()) {
+            this.syncUserData();
+          }
+        }
+      };
+      window.BoloAuth = BoloAuth;
+
       let S = {
         name: "",
         level: -1,
@@ -3322,39 +3804,89 @@
       // ---------- UI helpers & routing ----------
       let view = "home";
 
+      // Navigation link definitions
+      const NAV_LINKS = [
+        { id: 'grammar', icon: '📚', label: 'Grammar Hub' },
+        { id: 'home', icon: '📊', label: 'Dashboard' },
+        { id: 'speaking', icon: '🎙️', label: 'Speaking Practice' },
+        { id: 'interview', icon: '🎯', label: 'AI Interview' },
+        { id: 'live', icon: '📞', label: 'Live Bot' },
+        { id: 'scenarios', icon: '💬', label: 'Scenarios' },
+        { id: 'vocab', icon: '📖', label: 'Vocabulary' },
+        { id: 'stories', icon: '📚', label: 'Stories' },
+        { id: 'prog', icon: '📈', label: 'Progress' },
+        { id: 'set', icon: '⚙️', label: 'Settings' }
+      ];
+
+      function resolveRouteName(r) {
+        if (!r) return { view: 'grammar', arg: null };
+        const clean = String(r).replace(/^[#/]+/, '').trim().toLowerCase();
+        if (clean === 'grammar-hub' || clean === 'grammar') return { view: 'grammar', arg: null };
+        if (clean === 'dashboard') return { view: 'home', arg: null };
+        if (clean === 'profile') return { view: 'prog', arg: null };
+        if (clean === 'practice') return { view: 'grammar', arg: 'practice' };
+        if (clean === 'meaning') return { view: 'grammar', arg: 'meaning' };
+        if (clean === 'quiz') return { view: 'grammar', arg: 'quiz' };
+        if (clean === 'verify-email') return { view: 'verify-email', arg: null };
+        if (clean === 'login' || clean === 'splash') return { view: 'login', arg: null };
+        return { view: clean, arg: null };
+      }
+
+      const PUBLIC_ROUTES = ['splash', 'login', 'verify-email'];
+
+      function checkRouteGuard(targetView) {
+        const v = targetView || view;
+        const isAuth = BoloAuth.isAuthenticated();
+        const isVer = BoloAuth.isVerified();
+
+        // 1. Unauthenticated users:
+        if (!isAuth) {
+          if (v === 'verify-email' && BoloAuth.pendingEmail) {
+            return 'verify-email';
+          }
+          if (!PUBLIC_ROUTES.includes(v)) {
+            return 'login';
+          }
+          return v;
+        }
+
+        // 2. Authenticated but email NOT verified:
+        if (isAuth && !isVer) {
+          return 'verify-email';
+        }
+
+        // 3. Authenticated AND email verified:
+        if (isAuth && isVer) {
+          if (PUBLIC_ROUTES.includes(v)) {
+            return 'grammar';
+          }
+          return v;
+        }
+
+        return v;
+      }
+
       function updateSidebar() {
         const sb = $('#saas-sidebar');
         if (!sb) return;
-        const isAuthScreen = (view === 'splash' || view === 'login' || (typeof S !== 'undefined' && S.level < 0));
+        const isAuthScreen = (view === 'splash' || view === 'login' || view === 'verify-email' || !BoloAuth.isVerified());
         if (isAuthScreen) {
           sb.style.display = 'none';
           return;
         }
         sb.style.display = 'flex';
 
-        const userName = (typeof S !== 'undefined' && S.name) || 'Brajesh Kushwaha';
+        const authMeta = BoloAuth.user && BoloAuth.user.user_metadata;
+        const userName = (authMeta && (authMeta.full_name || authMeta.name)) || (typeof S !== 'undefined' && S.name) || 'Brajesh Kushwaha';
         const userLevel = (typeof S !== 'undefined' && S.level >= 0) ? S.level : 2;
         const levelNames = ["Beginner", "Elementary", "Intermediate", "Conversational", "Advanced"];
         const userLevelName = levelNames[userLevel] || "Intermediate";
-        const userXp = (typeof S !== 'undefined' && S.xp) || 140;
+        const userXp = (typeof S !== 'undefined' && S.xp) || 53;
         const xpProgress = Math.min(100, Math.round((userXp % 1000) / 10));
         const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'BK';
 
-        const navLinks = [
-          { id: 'home', icon: '📊', label: 'Dashboard' },
-          { id: 'speaking', icon: '🎙️', label: 'Speaking Practice' },
-          { id: 'interview', icon: '🎯', label: 'AI Interview' },
-          { id: 'live', icon: '📞', label: 'Live Bot' },
-          { id: 'grammar', icon: '📝', label: 'Grammar Hub' },
-          { id: 'scenarios', icon: '💬', label: 'Scenarios' },
-          { id: 'vocab', icon: '📖', label: 'Vocabulary' },
-          { id: 'stories', icon: '📚', label: 'Stories' },
-          { id: 'prog', icon: '📈', label: 'Progress' },
-          { id: 'set', icon: '⚙️', label: 'Settings' }
-        ];
-
         sb.innerHTML = `
-          <div class="saas-sidebar-brand" onclick="go('home')" title="Go to Dashboard">
+          <div class="saas-sidebar-brand" onclick="go('grammar')" title="Go to Grammar Hub">
             <div class="saas-logo-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
@@ -3363,13 +3895,13 @@
               </svg>
             </div>
             <div>
-              <div class="saas-brand-title">English Speaking</div>
+              <div class="saas-brand-title">Grammar Hub</div>
               <div class="saas-brand-author">by Brajesh Kushwaha</div>
             </div>
           </div>
 
           <div class="saas-sidebar-nav">
-            ${navLinks.map(link => `
+            ${NAV_LINKS.map(link => `
               <button class="saas-nav-item ${view === link.id ? 'active' : ''}" onclick="go('${link.id}')">
                 <span class="saas-nav-icon">${link.icon}</span>
                 <span>${link.label}</span>
@@ -3389,11 +3921,11 @@
               <div class="saas-level-xp">${userXp} / 1000 XP</div>
             </div>
 
-            <div class="saas-user-pill" onclick="logoutAuth()" title="Account settings / Logout">
+            <div class="saas-user-pill" onclick="logoutAuth()" title="Account settings / Sign Out">
               <div class="saas-user-avatar">${esc(initials)}</div>
               <div class="saas-user-info">
                 <div class="saas-user-name">${esc(userName)}</div>
-                <div class="saas-user-status"><span class="saas-status-dot"></span> Online</div>
+                <div class="saas-user-status"><span class="saas-status-dot"></span> Verified</div>
               </div>
               <span style="font-size:12px;opacity:0.6">✕</span>
             </div>
@@ -3405,7 +3937,7 @@
       function updateTopHeader() {
         const h = $('#top-header');
         if (!h) return;
-        const isAuthScreen = (view === 'splash' || view === 'login' || (typeof S !== 'undefined' && S.level < 0));
+        const isAuthScreen = (view === 'splash' || view === 'login' || view === 'verify-email' || !BoloAuth.isVerified());
         if (isAuthScreen) {
           h.style.display = 'none';
           document.body.classList.add('auth-mode');
@@ -3415,9 +3947,10 @@
         document.body.classList.remove('auth-mode');
         h.style.display = 'block';
 
-        const userName = (typeof S !== 'undefined' && S.name) || 'Brajesh_main';
-        const userStreak = (typeof S !== 'undefined' && S.streak) || 3;
-        const userXp = (typeof S !== 'undefined' && S.xp) || 140;
+        const authMeta = BoloAuth.user && BoloAuth.user.user_metadata;
+        const userName = (authMeta && (authMeta.full_name || authMeta.name)) || (typeof S !== 'undefined' && S.name) || 'Brajesh_main';
+        const userStreak = (typeof S !== 'undefined' && S.streak) || 5;
+        const userXp = (typeof S !== 'undefined' && S.xp) || 53;
         const hr = new Date().getHours();
         const timeGreeting = hr < 12 ? 'Good morning' : (hr < 17 ? 'Good afternoon' : 'Good evening');
 
@@ -3433,7 +3966,7 @@
           prog: `Learning Progress 📈`,
           set: `App Settings ⚙️`
         };
-        const activeTitle = viewTitles[view] || "English Speaking";
+        const activeTitle = viewTitles[view] || "Grammar Learning Hub 📚";
 
         h.innerHTML = `
           <div class="saas-header-inner">
@@ -3445,7 +3978,7 @@
               <span class="saas-badge-pill streak" title="${userStreak}-day speaking streak">🔥 ${userStreak}d Streak</span>
               <span class="saas-badge-pill xp" title="Total experience points earned">⭐ ${userXp} XP</span>
               <span class="saas-badge-pill cloud" title="Real-time sync to Supabase Cloud">☁️ Synced</span>
-              <button class="saas-auth-btn" onclick="logoutAuth()" title="Switch account or sign in">
+              <button class="saas-auth-btn" onclick="logoutAuth()" title="Sign out / Switch account">
                 <span>👤 ${esc(userName.split(' ')[0])}</span>
                 <span style="font-size:11px;opacity:0.7">✕</span>
               </button>
@@ -3457,42 +3990,103 @@
       }
 
       function go(v, a) {
-        if (v !== "live" && liveCall.active) {
+        let targetView = v;
+        let targetArg = a;
+        if (typeof v === "string") {
+          const resolved = resolveRouteName(v);
+          targetView = resolved.view;
+          if (resolved.arg && !targetArg) targetArg = resolved.arg;
+        }
+
+        const guardedView = checkRouteGuard(targetView);
+        if (guardedView !== targetView) {
+          targetView = guardedView;
+          targetArg = undefined;
+        }
+
+        // Sync URL hash
+        try {
+          const routeSlug = (targetView === "grammar" && targetArg) ? targetArg : targetView;
+          const hashSlug = (routeSlug === "home") ? "dashboard" : (routeSlug === "grammar" ? "grammar-hub" : routeSlug);
+          const newHash = "#" + hashSlug;
+          if (window.location.hash !== newHash) {
+            if (guardedView === "login" || guardedView === "verify-email") {
+              history.replaceState(null, "", newHash);
+            } else {
+              history.pushState(null, "", newHash);
+            }
+          }
+        } catch (e) {}
+
+        if (targetView !== "live" && liveCall.active) {
           endLiveCall(false);
         }
         stopListening();
-        view = v;
+        view = targetView;
         try {
-          if (R[v]) R[v](a);
+          if (R[targetView]) R[targetView](targetArg);
         } catch (e) {
-          console.error("View router error for:", v, e);
+          console.error("View router error for:", targetView, e);
         }
         window.scrollTo(0, 0);
         nav();
         updateTopHeader();
         checkProtocolBanner();
       }
+
       function nav() {
         const t = [
-          ["home", "🏠", "Home"],
+          ["grammar", "📚", "Grammar"],
+          ["home", "🏠", "Dashboard"],
           ["speaking", "🎙️", "Speaking"],
           ["interview", "🎯", "Interview"],
           ["live", "📞", "Live Bot"],
-          ["grammar", "📝", "Grammar"],
           ["scenarios", "💬", "Scenarios"],
           ["vocab", "📖", "Vocab"],
           ["prog", "📈", "Progress"],
           ["set", "⚙️", "Settings"],
         ];
-        const isAuthScreen = (view === "splash" || view === "login" || S.level < 0);
-        $("#nav").style.display = isAuthScreen ? "none" : "flex";
-        $("#nav").innerHTML = t
-          .map(
-            (x) =>
-              `<button class="${view === x[0] ? "on" : ""}" onclick="go('${x[0]}')"><div style="font-size:22px">${x[1]}</div>${x[2]}</button>`,
-          )
-          .join("");
+        const isAuthScreen = (view === "splash" || view === "login" || view === "verify-email" || !BoloAuth.isVerified());
+        const navEl = $("#nav");
+        if (navEl) {
+          navEl.style.display = isAuthScreen ? "none" : "flex";
+          navEl.innerHTML = t
+            .map(
+              (x) =>
+                `<button class="${view === x[0] ? "on" : ""}" onclick="go('${x[0]}')"><div style="font-size:22px">${x[1]}</div>${x[2]}</button>`,
+            )
+            .join("");
+        }
       }
+
+      window.addEventListener("popstate", () => {
+        const hash = (window.location.hash || "").replace(/^#/, "");
+        if (!hash) {
+          const guarded = checkRouteGuard(view);
+          if (guarded !== view) go(guarded);
+          return;
+        }
+        const resolved = resolveRouteName(hash);
+        go(resolved.view, resolved.arg);
+      });
+
+      window.addEventListener("hashchange", () => {
+        const hash = (window.location.hash || "").replace(/^#/, "");
+        if (!hash) return;
+        const resolved = resolveRouteName(hash);
+        if (resolved.view !== view) {
+          go(resolved.view, resolved.arg);
+        }
+      });
+
+      window.addEventListener("pageshow", (event) => {
+        if (event.persisted || !BoloAuth.isAuthenticated() || !BoloAuth.isVerified()) {
+          const guarded = checkRouteGuard(view);
+          if (guarded !== view) {
+            go(guarded);
+          }
+        }
+      });
       const esc = (s) =>
         String(s).replace(
           /[&<>"]/g,
@@ -4168,23 +4762,54 @@
       // =========================================================================
       // ---------- PREMIUM SPLIT-SCREEN AUTHENTICATION & LOGIN INTERFACE ----------
       // =========================================================================
+      // AUTHENTICATION VIEWS & HANDLERS (SUPABASE AUTH INTEGRATION)
+      // =========================================================================
       let authTab = "signin"; // "signin" | "signup"
+      let resendTimerInterval = null;
+
+      function updateResendCooldownUI() {
+        const btn = $('#verify-resend-btn');
+        const txt = $('#verify-resend-text');
+        if (!btn || !txt) return;
+        const rem = BoloAuth.getCooldownRemaining();
+        if (rem > 0) {
+          btn.disabled = true;
+          btn.style.opacity = '0.6';
+          btn.style.cursor = 'not-allowed';
+          txt.textContent = `Resend available in ${rem} seconds`;
+        } else {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+          txt.textContent = 'Resend Verification Email';
+        }
+      }
+
+      function startResendCooldownTracker() {
+        if (resendTimerInterval) clearInterval(resendTimerInterval);
+        updateResendCooldownUI();
+        resendTimerInterval = setInterval(() => {
+          updateResendCooldownUI();
+          if (BoloAuth.getCooldownRemaining() <= 0) {
+            clearInterval(resendTimerInterval);
+            resendTimerInterval = null;
+          }
+        }, 1000);
+      }
 
       R.splash = () => {
         touch();
         document.body.classList.add('auth-mode');
         updateTopHeader();
 
-        const defaultEmail = (S.userId && S.userId.includes('@')) 
-          ? S.userId 
-          : (S.userId ? `${S.userId}@example.com` : "brajesh.kushwaha@example.com");
-        const displayName = S.name || "Brajesh Kushwaha";
+        const defaultEmail = BoloAuth.pendingEmail || "";
+        const displayName = "";
 
         A.innerHTML = `
           <div class="auth-split-wrapper">
             <div class="auth-split-grid">
 
-              <!-- Left Column — Authentication Card (Image 5 style) -->
+              <!-- Left Column — Authentication Card -->
               <div class="auth-form-card">
                 <!-- Brand Header -->
                 <div class="auth-brand-header" style="margin-bottom:18px">
@@ -4196,17 +4821,19 @@
                     </svg>
                   </div>
                   <div>
-                    <div style="font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#fff">English Speaking</div>
+                    <div style="font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#fff">Grammar Learning Hub</div>
                     <div style="font-size:12px;color:#a78bfa;font-weight:600">by Brajesh Kushwaha</div>
                   </div>
                 </div>
 
                 <div style="margin-bottom:20px">
-                  <h1 class="auth-headline" style="font-size:24px;margin-bottom:8px">Speak with confidence. Connect without limits.</h1>
+                  <h1 class="auth-headline" style="font-size:23px;margin-bottom:8px">
+                    ${authTab === 'signin' ? 'Welcome Back to Grammar Hub' : 'Create Your Account'}
+                  </h1>
                   <p class="auth-subtext" style="font-size:13.5px;margin-bottom:0">
                     ${authTab === 'signin' 
-                      ? 'Sign in to continue your personalized AI English coaching journey.' 
-                      : 'Create your account to unlock interactive speaking simulations and instant AI feedback.'}
+                      ? 'Sign in to access your grammar mastery lessons, AI coaching, and curriculum progress.' 
+                      : 'Join the Grammar Learning Hub. Email verification is required before access is granted.'}
                   </p>
                 </div>
 
@@ -4232,17 +4859,24 @@
                   <label class="auth-field-label">Email Address</label>
                   <div class="auth-input-wrapper">
                     <span class="input-icon">✉️</span>
-                    <input type="text" id="auth-email" placeholder="name@example.com" value="${esc(defaultEmail)}" required autocomplete="username">
+                    <input type="email" id="auth-email" placeholder="name@example.com" value="${esc(defaultEmail)}" required autocomplete="username">
                   </div>
 
                   <label class="auth-field-label">Password</label>
                   <div class="auth-input-wrapper">
                     <span class="input-icon">🔒</span>
-                    <input type="password" id="auth-pass" placeholder="••••••••••••" value="english2026" required autocomplete="current-password">
-                    <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility()" title="Show/Hide Password" id="auth-eye-btn">👁️</button>
+                    <input type="password" id="auth-pass" placeholder="••••••••••••" required autocomplete="${authTab === 'signup' ? 'new-password' : 'current-password'}">
+                    <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility('auth-pass', 'auth-eye-btn')" title="Show/Hide Password" id="auth-eye-btn">👁️</button>
                   </div>
 
                   ${authTab === 'signup' ? `
+                    <label class="auth-field-label">Confirm Password</label>
+                    <div class="auth-input-wrapper">
+                      <span class="input-icon">🔒</span>
+                      <input type="password" id="auth-confirm-pass" placeholder="••••••••••••" required autocomplete="new-password">
+                      <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility('auth-confirm-pass', 'auth-confirm-eye-btn')" title="Show/Hide Password" id="auth-confirm-eye-btn">👁️</button>
+                    </div>
+
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px">
                       <div>
                         <label class="auth-field-label">Current Level</label>
@@ -4280,30 +4914,22 @@
                     <a class="auth-forgot-link" onclick="showForgotPasswordModal()">Forgot password?</a>
                   </div>
 
-                  <!-- Primary Sign In Button -->
+                  <!-- Primary Submit Button -->
                   <button type="submit" class="auth-primary-btn" id="auth-submit-btn">
                     <span>${authTab === 'signin' ? 'Sign In' : 'Create Account'}</span>
                     <span style="font-size:17px">➔</span>
                   </button>
                 </form>
 
-                <!-- Divider -->
-                <div class="auth-divider">OR</div>
-
-                <!-- Instant Demo Button -->
-                <button type="button" class="auth-demo-btn" onclick="handleDemoQuickAccess()">
-                  <span>⚡ Instant Demo / Continue as Guest</span>
-                </button>
-
                 <!-- Footer Byline -->
-                <div style="margin-top:18px;text-align:center;font-size:12px;color:var(--mu)">
+                <div style="margin-top:22px;text-align:center;font-size:13px;color:var(--mu)">
                   ${authTab === 'signin' 
                     ? `Don't have an account? <a onclick="switchAuthTab('signup')" style="color:#a78bfa;font-weight:700;cursor:pointer">Create New Account</a>` 
                     : `Already have an account? <a onclick="switchAuthTab('signin')" style="color:#a78bfa;font-weight:700;cursor:pointer">Sign In</a>`}
                 </div>
               </div>
 
-              <!-- Right Column — 3D Cybernetic Head Visualizer (Image 5 style) -->
+              <!-- Right Column — 3D Cybernetic Head Visualizer -->
               <div class="auth-brand-pane" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:32px 28px">
                 <div style="width:100%;max-width:440px;position:relative;margin-bottom:18px">
                   ${getCyberHeadSvg({ width: "100%", maxWidth: "420px" })}
@@ -4311,28 +4937,28 @@
 
                 <div style="position:relative;z-index:1;max-width:420px">
                   <div style="display:inline-block;padding:4px 14px;border-radius:20px;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:12px">
-                    NEURAL SPEECH AI
+                    AI GRAMMAR HUB · ALL-IN-ONE
                   </div>
                   <h3 style="font-size:20px;font-weight:800;color:#ffffff;margin:0 0 8px;letter-spacing:-0.3px">
-                    Intelligent Voice & Conversation Engine
+                    Complete Grammar Mastery System
                   </h3>
                   <p style="font-size:13.5px;color:#cbd5e1;line-height:1.6;margin:0 0 20px">
-                    Practice spontaneous English speaking with interactive voice AI, real-time STAR interview evaluations, and personalized curriculum guidance.
+                    Master daily routines, facts, sentence structures, and English grammar through 20 integrated learning modules with real-time AI feedback.
                   </p>
 
                   <div class="auth-feature-grid" style="text-align:left">
                     <div class="auth-feature-pill">
-                      <span style="font-size:16px">🎙️</span>
+                      <span style="font-size:16px">📚</span>
                       <div>
-                        <b>Live Voice Partner</b>
-                        <div style="font-size:11px;color:var(--mu)">Hands-free speech calls</div>
+                        <b>40 Grammar Topics</b>
+                        <div style="font-size:11px;color:var(--mu)">Step-by-step curriculum</div>
                       </div>
                     </div>
                     <div class="auth-feature-pill">
-                      <span style="font-size:16px">🎯</span>
+                      <span style="font-size:16px">🤖</span>
                       <div>
-                        <b>Interview AI</b>
-                        <div style="font-size:11px;color:var(--mu)">15 tracks & feedback</div>
+                        <b>AI Coach & Checker</b>
+                        <div style="font-size:11px;color:var(--mu)">Real-time explanations</div>
                       </div>
                     </div>
                   </div>
@@ -4340,7 +4966,7 @@
 
                 <div class="auth-brand-footer" style="width:100%;margin-top:24px">
                   <span>Engineered by <b>Brajesh Kushwaha</b></span>
-                  <span>v2.5 · AI Edition</span>
+                  <span>Supabase Verified · 2026 Edition</span>
                 </div>
               </div>
 
@@ -4351,14 +4977,88 @@
 
       R.login = R.splash;
 
+      // Dedicated /verify-email view
+      R['verify-email'] = () => {
+        touch();
+        document.body.classList.add('auth-mode');
+        updateTopHeader();
+
+        const targetEmail = BoloAuth.pendingEmail || (BoloAuth.user && BoloAuth.user.email) || "your registered email address";
+
+        A.innerHTML = `
+          <div class="auth-split-wrapper">
+            <div class="auth-split-grid" style="max-width:520px;margin:30px auto;display:block">
+              <div class="auth-form-card" style="padding:42px 34px;text-align:center">
+                
+                <!-- Brand Header -->
+                <div class="auth-brand-header" style="justify-content:center;margin-bottom:20px">
+                  <div class="auth-brand-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                      <line x1="12" x2="12" y1="19" y2="22"/>
+                    </svg>
+                  </div>
+                  <div style="text-align:left">
+                    <div style="font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#fff">Grammar Learning Hub</div>
+                    <div style="font-size:12px;color:#a78bfa;font-weight:600">Secure Supabase Authentication</div>
+                  </div>
+                </div>
+
+                <!-- Glowing Email Icon -->
+                <div style="margin:22px auto 18px;width:74px;height:74px;border-radius:50%;background:radial-gradient(circle, rgba(139,92,246,0.3) 0%, rgba(139,92,246,0.06) 70%);border:2px solid rgba(139,92,246,0.45);display:flex;align-items:center;justify-content:center;box-shadow:0 0 32px rgba(139,92,246,0.3)">
+                  <span style="font-size:32px">✉️</span>
+                </div>
+
+                <h1 class="auth-headline" style="font-size:24px;margin-bottom:12px;text-align:center">Check Your Email</h1>
+
+                <div style="font-size:15px;font-weight:700;color:#f8fafc;margin-bottom:14px;padding:14px 18px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:12px;line-height:1.5">
+                  Please verify your email address to continue.
+                </div>
+
+                <p class="auth-subtext" style="font-size:13.5px;color:#cbd5e1;line-height:1.6;margin-bottom:22px;text-align:center">
+                  A verification link has been sent to:<br>
+                  <strong style="color:#c4b5fd;font-size:15px;word-break:break-all">${esc(targetEmail)}</strong>
+                </p>
+
+                <div id="verify-alert" class="auth-alert-box" style="margin-bottom:18px"></div>
+
+                <div style="display:flex;flex-direction:column;gap:12px">
+                  <button type="button" class="auth-primary-btn" id="verify-check-btn" onclick="handleVerifyCheck()" style="padding:14px;font-size:15px">
+                    <span>I've Verified My Email — Continue</span>
+                    <span style="font-size:17px">➔</span>
+                  </button>
+
+                  <button type="button" class="auth-demo-btn" id="verify-resend-btn" onclick="handleResendVerification()" style="padding:13px;border-color:rgba(139,92,246,0.45)">
+                    <span id="verify-resend-text">Resend Verification Email</span>
+                  </button>
+
+                  <button type="button" class="g" onclick="go('login')" style="padding:12px;background:transparent;border:1px solid rgba(255,255,255,0.12);color:#94a3b8;border-radius:12px;cursor:pointer;font-weight:600;font-size:14px">
+                    ← Back to Login
+                  </button>
+                </div>
+
+                <div style="margin-top:24px;padding-top:18px;border-top:1px solid rgba(139,92,246,0.18);font-size:13px;color:#94a3b8;line-height:1.6">
+                  <p style="margin:0 0 6px;color:#cbd5e1">Didn't receive the email? Check your spam/junk folder.</p>
+                  <p style="margin:0;font-size:12px;color:#64748b">Once confirmed, your access to the Grammar Learning Hub is automatically unlocked.</p>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        `;
+
+        startResendCooldownTracker();
+      };
+
       function switchAuthTab(tab) {
         authTab = tab;
         R.splash();
       }
 
-      function toggleAuthPasswordVisibility() {
-        const inp = $('#auth-pass');
-        const btn = $('#auth-eye-btn');
+      function toggleAuthPasswordVisibility(inputId = 'auth-pass', btnId = 'auth-eye-btn') {
+        const inp = $('#' + inputId);
+        const btn = $('#' + btnId);
         if (!inp) return;
         if (inp.type === 'password') {
           inp.type = 'text';
@@ -4376,93 +5076,237 @@
         al.innerHTML = (type === 'error' ? '⚠️ ' : '✅ ') + esc(msg);
       }
 
-      function handleAuthSubmit(e) {
+      async function handleAuthSubmit(e) {
         if (e && e.preventDefault) e.preventDefault();
         const emailInput = $('#auth-email');
         const passInput = $('#auth-pass');
+        const submitBtn = $('#auth-submit-btn');
+
         if (!emailInput || !emailInput.value.trim()) {
-          showAuthAlert("Please provide a valid email or username.");
+          showAuthAlert("Please provide a valid email address.");
           return;
         }
-        if (!passInput || !passInput.value.trim()) {
+        const rawEmail = emailInput.value.trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(rawEmail)) {
+          showAuthAlert("Please enter a valid email address (e.g. name@example.com).");
+          return;
+        }
+
+        if (!passInput || !passInput.value) {
           showAuthAlert("Please enter your password.");
           return;
         }
-
-        const rawEmail = emailInput.value.trim();
-        const extractedName = rawEmail.includes('@') ? rawEmail.split('@')[0] : rawEmail;
-        const formattedName = extractedName.charAt(0).toUpperCase() + extractedName.slice(1);
-
-        if (authTab === 'signup') {
-          const nameInput = $('#auth-name');
-          const levelSelect = $('#auth-level');
-          const goalSelect = $('#auth-goal');
-          if (nameInput && nameInput.value.trim()) {
-            S.name = nameInput.value.trim();
-          } else {
-            S.name = formattedName;
-          }
-          if (levelSelect) S.level = parseInt(levelSelect.value) || 2;
-          if (goalSelect) S.goal = goalSelect.value || "Job Interview";
-        } else {
-          if (!S.name || S.name === "Student") {
-            S.name = formattedName;
-          }
-          if (typeof S.level !== 'number' || S.level < 0) {
-            S.level = 2; // Default Intermediate
-          }
-          if (!S.goal) {
-            S.goal = "Job Interview";
-          }
+        const password = passInput.value;
+        if (password.length < 6) {
+          showAuthAlert("Password must be at least 6 characters long.");
+          return;
         }
 
-        S.userId = rawEmail.replace(/[^a-zA-Z0-9_-]/g, '_');
-        save();
-        syncToSupabaseCloud();
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = '0.7';
+          submitBtn.innerHTML = `<span>Connecting to Supabase...</span><span class="spinner" style="display:inline-block;animation:spin 1s linear infinite">⏳</span>`;
+        }
 
-        showAuthAlert("Welcome back, " + S.name + "! Launching dashboard...", "success");
-        setTimeout(() => {
-          go('home');
-        }, 300);
+        try {
+          if (authTab === 'signup') {
+            const nameInput = $('#auth-name');
+            const confirmPassInput = $('#auth-confirm-pass');
+            const fullName = (nameInput && nameInput.value.trim()) || rawEmail.split('@')[0];
+            const confirmPassword = confirmPassInput ? confirmPassInput.value : '';
+
+            if (password !== confirmPassword) {
+              showAuthAlert("Passwords do not match. Please verify both passwords.");
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.innerHTML = `<span>Create Account</span><span style="font-size:17px">➔</span>`;
+              }
+              return;
+            }
+
+            const levelSelect = $('#auth-level');
+            const goalSelect = $('#auth-goal');
+            if (levelSelect) S.level = parseInt(levelSelect.value) || 2;
+            if (goalSelect) S.goal = goalSelect.value || "Job Interview";
+            S.name = fullName;
+
+            const res = await BoloAuth.signUp(fullName, rawEmail, password);
+            if (!res.success) {
+              showAuthAlert(res.error || "Failed to create account. Please try again.");
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.innerHTML = `<span>Create Account</span><span style="font-size:17px">➔</span>`;
+              }
+              return;
+            }
+
+            // DO NOT automatically give access! Prompt to verify email:
+            showAuthAlert("Account created! A verification email has been sent. Redirecting...", "success");
+            setTimeout(() => {
+              go('verify-email');
+            }, 400);
+
+          } else {
+            // Sign In
+            const res = await BoloAuth.signIn(rawEmail, password);
+
+            if (res.unverified) {
+              showAuthAlert("Please verify your email address to continue. Redirecting...", "error");
+              setTimeout(() => {
+                go('verify-email');
+              }, 400);
+              return;
+            }
+
+            if (!res.success) {
+              showAuthAlert(res.error || "Invalid email or password. Please try again.");
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.innerHTML = `<span>Sign In</span><span style="font-size:17px">➔</span>`;
+              }
+              return;
+            }
+
+            // Existing verified user
+            showAuthAlert("Welcome back, " + (S.name || "Learner") + "! Opening Grammar Learning Hub...", "success");
+            setTimeout(() => {
+              go('grammar');
+            }, 400);
+          }
+        } catch (err) {
+          showAuthAlert("Authentication error: " + (err.message || "Connection failed. Please retry."));
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.innerHTML = `<span>${authTab === 'signin' ? 'Sign In' : 'Create Account'}</span><span style="font-size:17px">➔</span>`;
+          }
+        }
       }
 
-      function handleDemoQuickAccess() {
-        if (!S.name) S.name = "Brajesh Kushwaha";
-        if (typeof S.level !== 'number' || S.level < 0) S.level = 2;
-        if (!S.goal) S.goal = "Job Interview";
-        if (!S.userId) S.userId = "brajesh_main";
-        save();
-        go('home');
+      async function handleVerifyCheck() {
+        const btn = $('#verify-check-btn');
+        const alertBox = $('#verify-alert');
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = `<span>Checking status with Supabase...</span><span class="spinner" style="display:inline-block;animation:spin 1s linear infinite">⏳</span>`;
+        }
+
+        const res = await BoloAuth.checkStatus();
+        if (res.verified) {
+          if (alertBox) {
+            alertBox.className = 'auth-alert-box success';
+            alertBox.innerHTML = '✅ Email verified successfully! Loading Grammar Learning Hub...';
+          }
+          setTimeout(() => {
+            go('grammar');
+          }, 500);
+        } else {
+          if (alertBox) {
+            alertBox.className = 'auth-alert-box error';
+            alertBox.innerHTML = '⚠️ Your email is not verified yet. Please click the confirmation link sent to your inbox, then click Continue.';
+          }
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<span>I've Verified My Email — Continue</span><span style="font-size:17px">➔</span>`;
+          }
+        }
+      }
+
+      async function handleResendVerification() {
+        const alertBox = $('#verify-alert');
+        const targetEmail = BoloAuth.pendingEmail || (BoloAuth.user && BoloAuth.user.email) || "";
+
+        const res = await BoloAuth.resendVerification(targetEmail);
+        if (res.success) {
+          if (alertBox) {
+            alertBox.className = 'auth-alert-box success';
+            alertBox.innerHTML = '✅ ' + esc(res.message);
+          }
+        } else {
+          if (alertBox) {
+            alertBox.className = 'auth-alert-box error';
+            alertBox.innerHTML = '⚠️ ' + esc(res.error || 'Failed to resend verification email.');
+          }
+        }
+        startResendCooldownTracker();
       }
 
       function showForgotPasswordModal() {
-        const email = ($('#auth-email') && $('#auth-email').value) || S.userId || 'your-account';
+        const defaultEmail = ($('#auth-email') && $('#auth-email').value.trim()) || (BoloAuth.user && BoloAuth.user.email) || "";
         showModal(`
-          <div style="text-align:center;padding:10px">
-            <div style="font-size:42px;margin-bottom:10px">🔑</div>
-            <h2 style="margin:0 0 8px;font-size:20px">Reset Your Password</h2>
-            <p class="mu" style="font-size:13.5px;line-height:1.5">
-              A secure password reset link will be simulated for <b>${esc(email)}</b>. In local mode, your credentials are saved in your encrypted local session.
+          <div style="text-align:center;padding:14px 6px">
+            <div style="font-size:42px;margin-bottom:12px">🔑</div>
+            <h2 style="margin:0 0 8px;font-size:21px;font-weight:800;color:#fff">Reset Your Password</h2>
+            <p class="mu" style="font-size:13.5px;line-height:1.6;margin:0 0 18px">
+              Enter your registered email address below. We will send you a secure link to reset your password via Supabase Auth.
             </p>
-            <div class="card" style="padding:14px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);margin:14px 0">
-              <span class="mu" style="font-size:12px">Default Access Password:</span>
-              <div style="font-size:16px;font-weight:700;color:var(--pr-light);margin-top:4px">english2026</div>
+            
+            <div id="forgot-alert" class="auth-alert-box" style="margin-bottom:14px"></div>
+
+            <div class="auth-input-wrapper" style="text-align:left;margin-bottom:16px">
+              <span class="input-icon">✉️</span>
+              <input type="email" id="forgot-email" placeholder="name@example.com" value="${esc(defaultEmail)}" required>
             </div>
-            <button style="width:100%;padding:12px;margin-bottom:8px" onclick="closeModal();if($('#auth-pass')){$('#auth-pass').value='english2026';}showAuthAlert('Password autofilled! Click Sign In.', 'success');">Auto-fill Password & Close</button>
-            <button class="g" style="width:100%;padding:10px" onclick="closeModal()">Close</button>
+
+            <button id="forgot-submit-btn" style="width:100%;padding:13px;margin-bottom:10px;font-weight:700" onclick="handleForgotPasswordSubmit()">
+              Send Reset Link
+            </button>
+            <button class="g" style="width:100%;padding:11px" onclick="closeModal()">Cancel</button>
           </div>
         `);
       }
 
-      function logoutAuth() {
-        go('splash');
+      async function handleForgotPasswordSubmit() {
+        const inp = $('#forgot-email');
+        const alertBox = $('#forgot-alert');
+        const btn = $('#forgot-submit-btn');
+        if (!inp || !inp.value.trim()) {
+          if (alertBox) {
+            alertBox.className = 'auth-alert-box error';
+            alertBox.innerHTML = '⚠️ Please enter your email address.';
+          }
+          return;
+        }
+        const email = inp.value.trim().toLowerCase();
+
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Sending reset instructions...';
+        }
+
+        const res = await BoloAuth.resetPassword(email);
+        if (alertBox) {
+          alertBox.className = 'auth-alert-box success';
+          // Strictly conform to privacy rule: Do not reveal whether an email exists
+          alertBox.innerHTML = '✅ If an account exists with this email, password reset instructions have been sent to your inbox. Please check your spam folder.';
+        }
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Resend Reset Link';
+        }
+      }
+
+      async function logoutAuth() {
+        await BoloAuth.signOut();
+        S.userId = "";
+        if (typeof saveLocalOnly === 'function') saveLocalOnly();
+        try {
+          history.replaceState(null, '', window.location.pathname + '#login');
+        } catch (e) {}
+        go('login');
       }
 
       window.switchAuthTab = switchAuthTab;
       window.toggleAuthPasswordVisibility = toggleAuthPasswordVisibility;
       window.handleAuthSubmit = handleAuthSubmit;
-      window.handleDemoQuickAccess = handleDemoQuickAccess;
+      window.handleVerifyCheck = handleVerifyCheck;
+      window.handleResendVerification = handleResendVerification;
       window.showForgotPasswordModal = showForgotPasswordModal;
+      window.handleForgotPasswordSubmit = handleForgotPasswordSubmit;
       window.logoutAuth = logoutAuth;
       window.updateTopHeader = updateTopHeader;
       let ob = { step: 0, name: "", lv: -1, goal: "" };
@@ -12949,8 +13793,24 @@ Return ONLY a JSON object:
       });
       window.S = S;
 
-      go(S.level < 0 ? "splash" : "home");
-      checkProtocolBanner();
+      (async function initApp() {
+        await BoloAuth.init();
+
+        const initialHash = (window.location.hash || "").replace(/^#/, "");
+        let targetView = "grammar";
+        let targetArg = null;
+
+        if (initialHash) {
+          const initialResolved = resolveRouteName(initialHash);
+          targetView = initialResolved.view;
+          targetArg = initialResolved.arg;
+        } else {
+          targetView = BoloAuth.isVerified() ? "grammar" : "login";
+        }
+
+        go(targetView, targetArg);
+        checkProtocolBanner();
+      })();
     </script>
   </body>
 </html>
